@@ -1,0 +1,134 @@
+---
+- name: Populate Service Facts
+  service_facts:
+  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+    
+- name: Stop Mongodb-Exporter Service if Exist
+  ignore_errors: true
+  systemd:
+    name: mongodb-exporter.service
+    state: stopped
+    enabled: false
+  when:
+    - ansible_service_mgr == "systemd"
+    - mongodb_manage_systemd_unit | bool
+    - "'mongodb-exporter.service' in ansible_facts.services"
+  notify:
+    - Systemd Daemon Reload
+  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+
+- name: Stop MongoDB Service if Exist
+  ignore_errors: true
+  systemd:
+    name: "{{ mongodb_daemon_name }}.service"
+    state: stopped
+    enabled: false
+  when:
+    - ansible_service_mgr == "systemd"
+    - mongodb_manage_systemd_unit | bool
+    - "mongodb_daemon_name + '.service' in ansible_facts.services"
+  notify:
+    - Systemd Daemon Reload
+  tags: [mongodb-uninstall]
+
+- name: Systemctl Reset Failed Services
+  command: systemctl reset-failed
+  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+
+- name: Uninstall MongoDB Package
+  apt:
+    pkg: "mongo*"
+    # pkg: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    state: absent
+    purge: yes
+  tags: [mongodb-uninstall]
+
+- name: Delete APT Key for MongoDB
+  apt_key:
+    keyserver: "{{ mongodb_apt_keyserver }}"
+    id: "{{ apt_key_item.value }}"
+    state: absent
+  with_items: "{{ lookup('dict', mongodb_apt_key_id) }}"
+  loop_control:
+    loop_var: apt_key_item
+  when: mongodb_package == 'mongodb-org'
+  tags: [mongodb-uninstall]
+
+- name: Delete APT Repository for MongoDB
+  apt_repository:
+    repo: "{{ repository_item.value }}"
+    update_cache: false
+    state: absent
+  with_items: "{{ lookup('dict', mongodb_repository) }}"
+  loop_control:
+    loop_var: repository_item
+  when: mongodb_package == 'mongodb-org'
+  tags: [mongodb-uninstall]
+
+- name: Uninstall Numactl Package
+  apt:
+    pkg: numactl
+    state: absent
+  tags: [mongodb-uninstall]
+
+- name: Delete Mongodb User
+  user:
+    name: "{{ mongodb_user }}"
+    group: "{{ mongodb_user }}"
+    uid: "{{ mongodb_uid }}"
+    state: absent
+    remove: yes
+    force: true
+  tags: [mongodb-uninstall]
+
+- name: Delete Mongodb-Exporter User
+  user:
+    name: "{{ mongodb_exporter_user }}"
+    state: absent
+    remove: yes
+    force: true
+  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+
+- name: Find Mongodb-Exporter Config and Binary Files
+  find:
+    paths: 
+      - /lib/systemd/system
+      - /var
+      - /usr/bin
+      - /usr/local/bin
+      - /etc
+    patterns: "mongodb-exporter*"
+    file_type: any
+    recurse: yes
+  register: files_and_dir_to_delete
+  tags: [mongodb-uninstall-exporter]
+
+- name: Find MongoDB and Mongodb-Exporter Config and Binary Files
+  find:
+    paths: 
+      - /lib/systemd/system
+      - /var
+      - /usr/bin
+      - /usr/local/bin
+      - /etc
+    patterns: "mongo*"
+    file_type: any
+    recurse: yes
+  register: files_and_dir_to_delete
+  tags: [mongodb-uninstall]
+
+- name: Delete MongoDB Database
+  file:
+    path: "{{ mongodb_storage_dbpath }}"
+    state: absent
+  tags: [mongodb-dbdelete]
+
+- name: Delete Config and Binary Files
+  file:
+    path: "{{ files_and_dir_to_delete_item.path }}"
+    state: absent
+  with_items: "{{ files_and_dir_to_delete.files }}"
+  loop_control:
+    loop_var: files_and_dir_to_delete_item
+  become: yes
+  tags: [mongodb-uninstall, mongodb-uninstall-exporter]

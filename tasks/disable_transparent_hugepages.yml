@@ -1,0 +1,21 @@
+---
+
+- name: Create Disable Transparent Hugepages Systemd Service File
+  template:
+    src: "{{ item }}"
+    dest: /etc/systemd/system/disable-transparent-hugepages.service
+    owner: root
+    group: root
+    mode: 0644
+  with_first_found:
+    - "disable-transparent-hugepages.{{ ansible_distribution | lower }}.service.j2"
+    - "disable-transparent-hugepages.{{ ansible_os_family | lower }}.service.j2"
+  tags: [mongodb, mongodb-install]
+
+- name: Run Disable Transparent Hugepages Systemd Service
+  systemd:
+    name: disable-transparent-hugepages
+    enabled: true
+    state: started
+    daemon_reload: yes
+  tags: [mongodb, mongodb-install]

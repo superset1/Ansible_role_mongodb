@@ -1,0 +1,38 @@
+---
+
+galaxy_info:
+  role_name: mongodb
+  author: Vitaly Kargin
+  company: WB
+  description: Manage MongoDB with authentication and replica sets
+
+  license: MIT
+
+  min_ansible_version: 2.5
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - xenial
+        - bionic
+        - focal
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+    - name: EL
+      versions:
+        - 6
+        - 7
+        - 8
+    - name: Amazon
+      versions:
+        - Candidate
+  galaxy_tags:
+    - mongodb
+    - database
+    - nosql
+    - node-exporter
+    - vault
+
+dependencies: []

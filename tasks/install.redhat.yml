@@ -1,0 +1,72 @@
+---
+
+- name: Fail When Used Wrong mongodb_version Variable with RHEL / CentOS / Oracle
+  fail:
+    msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for RedHat family"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("3.4|3.6|4.0|4.2|4.4|5.0|6.0")
+    - ansible_os_family == 'RedHat'
+  tags: [mongodb, mongodb-install]
+  
+- name: Install EPEL Release Repository
+  package:
+    name: epel-release
+    state: present
+  tags: [mongodb, mongodb-install]
+
+- name: Add YUM Repository
+  template:
+    src: mongodb.redhat.repo.j2
+    dest: /etc/yum.repos.d/{{ mongodb_package }}-{{ mongodb_major_version }}.repo
+    mode: 0644
+  when: mongodb_package == 'mongodb-org'
+  tags: [mongodb, mongodb-install]
+
+- name: Install MongoDB Package
+  yum:
+    name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    state: "{{ mongodb_package_state }}"
+    lock_timeout: "{{ yum_lock_timeout }}"
+  tags: [mongodb, mongodb-install]
+
+- name: Install Numactl Package
+  yum:
+    name: numactl
+    state: present
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_use_numa
+  tags: [mongodb, mongodb-install]
+
+- name: Install PyMongo Package
+  yum:
+    name: python-pymongo
+    state: present
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: not mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]
+
+- name: Install PIP
+  yum:
+    name:
+      - python3-pip
+      - python3-devel
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]
+
+- name: Install Setuptools (required for ansible 2.7+)
+  yum:
+    name:
+      - python3-setuptools
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]
+
+- name: Install PyMongo from PIP
+  pip:
+    name: pymongo
+    state: "{{ mongodb_pymongo_pip_version is defined | ternary('present', 'latest') }}"
+    version: "{{ mongodb_pymongo_pip_version | default(omit) }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]

@@ -1,0 +1,133 @@
+---
+
+- name: Fail When Used Wrong mongodb_version Variable with Debian 8 (Jessie)
+  fail:
+    msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' for Debian 8 (Jessie)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("3.4|3.6|4.0")
+    - ansible_distribution_release == 'jessie'
+  tags: [mongodb, mongodb-install]
+
+- name: Fail When Used Wrong mongodb_version Variable with Debian 9 (Stretch)
+  fail:
+    msg: "mongodb_version variable should be '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for Debian 9 (Stretch)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("3.6|4.0|4.2|4.4|5.0|6.0")
+    - ansible_distribution_release == 'stretch'
+  tags: [mongodb, mongodb-install]
+
+- name: Fail When Used Wrong mongodb_version Variable with Debian 10 (Buster)
+  fail:
+    msg: "mongodb_version variable should be '4.2' or '4.4' or '5.0' or '6.0' for Debian 10 (Buster)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("4.2|4.4|5.0|6.0")
+    - ansible_distribution_release == 'buster'
+  tags: [mongodb, mongodb-install]
+
+- name: Fail When Used Wrong mongodb_version Variable with Ubuntu 16.04 (Xenial)
+  fail:
+    msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for Ubuntu 16.04 (Xenial)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("3.4|3.6|4.0|4.2|4.4|5.0|6.0")
+    - ansible_distribution_release == "xenial"
+  tags: [mongodb, mongodb-install]
+
+- name: Fail When Used Wrong mongodb_version Variable with Ubuntu 18.04 (Bionic)
+  fail:
+    msg: "mongodb_version variable should be '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for Ubuntu 18.04 (Bionic)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("3.6|4.0|4.2|4.4|5.0|6.0")
+    - ansible_distribution_release == "bionic"
+  tags: [mongodb, mongodb-install]
+
+- name: Fail When Used Wrong mongodb_version Variable with Ubuntu 20.04 (Focal)
+  fail:
+    msg: "mongodb_version variable should be '4.4' or '5.0' or '6.0' for Ubuntu 20.04 (Focal)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongodb_major_version is not regex("4.4|5.0|6.0")
+    - ansible_distribution_release == "focal"
+  tags: [mongodb, mongodb-install]
+
+- name: Fail When Used Wrong ansible_distribution_release
+  fail:
+    msg: "ansible_distribution_release should be 'Debian 8 (Jessie)' or 'Debian 9 (Stretch)' or 'Debian 10 (Buster)' or 'Ubuntu 16.04 (Xenial)' or 'Ubuntu 18.04 (Bionic)' or 'Ubuntu 20.04 (Focal)'"
+  when:
+    - ansible_distribution_release is not regex("xenial|stretch|buster|bionic|focal")
+  tags: [mongodb, mongodb-install]
+
+- name: Disable Transparent Huge Pages on Systemd Systems
+  include_tasks: disable_transparent_hugepages.yml
+  when:
+    - mongodb_disable_transparent_hugepages
+    - ansible_service_mgr == "systemd"
+  tags: [mongodb, mongodb-install]
+
+- name: Install Gnupg Package
+  apt:
+    name: gnupg
+    state: present
+    update_cache: true
+  tags: [mongodb, mongodb-install]
+
+- name: Add APT Key
+  apt_key:
+    keyserver: "{{ mongodb_apt_keyserver }}"
+    id: "{{ mongodb_apt_key_id[mongodb_major_version] }}"
+  when: mongodb_package == 'mongodb-org'
+  tags: [mongodb, mongodb-install]
+
+- name: Add APT Repository
+  apt_repository:
+    repo: "{{ mongodb_repository[mongodb_major_version] }}"
+    update_cache: true
+  when: mongodb_package == 'mongodb-org'
+  tags: [mongodb, mongodb-install]
+
+- name: Install MongoDB Package
+  apt:
+    name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    state: "{{ mongodb_package_state }}"
+    update_cache: true
+  tags: [mongodb, mongodb-install]
+
+- name: Install Numactl Package
+  apt:
+    name: numactl
+    state: present
+  when: mongodb_use_numa
+  tags: [mongodb, mongodb-install]
+
+- name: Install PyMongo Package
+  apt:
+    name: python3-pymongo
+  when: not mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]
+
+- name: Install PIP
+  apt:
+    pkg:
+      - python3-pip
+      - python3-dev
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]
+
+- name: Install Setuptools (required for ansible 2.7+)
+  apt:
+    pkg:
+      - python3-setuptools
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]
+
+- name: Install PyMongo from PIP
+  pip:
+    name: pymongo
+    state: "{{ mongodb_pymongo_pip_version is defined | ternary('present', 'latest') }}"
+    version: "{{ mongodb_pymongo_pip_version | default(omit) }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongodb-install]

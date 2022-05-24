@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=Prometheus exporter for MongoDB (https://github.com/percona/mongodb_exporter)
+After=network.target mongod.service
+
+[Service]
+Type=simple
+RestartSec=5s
+Restart=on-failure
+User=mongodb-exporter
+Group=mongodb-exporter
+# ExecStart=/usr/local/bin/mongodb-exporter --mongodb.uri={{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin/?connect=direct
+ExecStart=/usr/local/bin/mongodb-exporter --mongodb.uri=mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin
+ExecStop=/bin/kill -s SIGINT $MAINPID
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

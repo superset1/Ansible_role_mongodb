@@ -1,0 +1,30 @@
+---
+
+- name: "Configure a Replicaset {{ mongodb_replication_replset }}"
+  community.mongodb.mongodb_replicaset:
+    login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
+    login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
+    login_host: localhost
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    reconfigure: "{{ mongodb_replication_reconfigure if (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) else false }}"
+    force: true
+    members: "{{ groups.mongo_cluster | join(':' + mongodb_net_port | string + ',') }}"
+    arbiter_at_index: "{{ groups.mongo_cluster.index(mongodb_arbiter) if mongodb_arbiter is defined else omit }}"
+  tags: [mongodb, mongodb-replicaset]
+
+- name: Wait for the Replicaset to Stabilise
+  community.mongodb.mongodb_status:
+    login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
+    login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
+    login_host: localhost
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    poll: 10
+    interval: 10
+  register: mongodb_replicaset_status
+  tags: [mongodb, mongodb-replicaset]

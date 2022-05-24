@@ -1,0 +1,148 @@
+---
+
+- name: "Create Monitor User {{ mongodb_exporter_name }}"
+  mongodb_user:
+    name: "{{ mongodb_exporter_name }}"
+    password: "{{ mongodb_exporter_password }}"
+    update_password: "{{ mongodb_admin_update_password | ternary('always', 'on_create') }}"
+    state: present
+    roles:
+      - db: admin
+        role: clusterMonitor
+      - db: local
+        role: read
+    database: "{{ mongodb_login_database }}"
+    login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
+    login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+  when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or
+        not mongodb_replication_enabled
+  tags: [mongodb, mongodb-exporter]
+
+- name: Set MongoDB Server Prometheus Exporter Download Link
+  set_fact: exp_link=https://github.com/percona/mongodb_exporter/releases/download/
+  tags: [mongodb, mongodb-exporter]
+
+# https://github.com/percona/mongodb_exporter/releases/download/v{{ mongodb.server.exporter.version }}/mongodb_exporter-{{ mongodb.server.exporter.version }}.linux-amd64.tar.gz
+- name: Set MongoDB Prometheus Exporter Checksum Local Path
+  set_fact: exporter_checksum_path="/tmp/mongodb_exporter_v{{ mongodb_exporter_version }}_SHA256SUMS"
+  tags: [mongodb, mongodb-exporter]
+
+- name: Download Mongodb-Exporter Prometheus Exporter checksums
+  get_url:
+    url: "{{ exp_link }}v{{ mongodb_exporter_version }}/mongodb_exporter-{{ mongodb_exporter_version }}-checksums.txt"
+    dest: "{{ exporter_checksum_path }}"
+  tags: [mongodb, mongodb-exporter]
+
+- name: Set Stat for Mongodb-Exporter Streaming Binary Checksums
+  stat:
+    path: "{{ exporter_checksum_path }}"
+  register: mongodb_exporter_binary_checksums_fact
+  tags: [mongodb, mongodb-exporter]
+
+- name: Register the Checksum Value
+  shell: "set -o pipefail && cat {{ exporter_checksum_path }} | grep {{ os }}-{{ bin_arch }}.tar.gz | awk '{ print $1 }'"
+  args:
+      executable: "/bin/bash"
+  register: mongodb_exporter_checksum_value
+  when: mongodb_exporter_binary_checksums_fact.stat.exists
+  tags: [mongodb, mongodb-exporter]
+
+# https://github.com/percona/mongodb_exporter/releases/download/v0.11.1/mongodb_exporter-0.11.1.linux-amd64.tar.gz
+- name: Download MongoDB Prometheus Exporter from the Github Repo
+  get_url:
+    url: "{{ exp_link }}v{{ mongodb_exporter_version }}/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"
+    dest: /tmp/
+    mode: 0755
+    checksum: sha256:{{ mongodb_exporter_checksum_value.stdout }}
+  tags: [mongodb, mongodb-exporter]
+
+- name: Create a Directory for Extracting Files
+  file:
+    path: /tmp/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}/
+    state: directory
+  tags: [mongodb, mongodb-exporter]
+
+- name: Extract Mongodb-Exporter Streaming Binary
+  unarchive:
+    src: "/tmp/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"
+    dest: /tmp/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}/
+    remote_src: yes
+    mode: 0755
+    list_files: true
+  tags: [mongodb, mongodb-exporter]
+
+- name: Checking for a Downloaded File Exist
+  stat:
+    path: "/tmp/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}/mongodb_exporter"
+  register: download_result_exporter
+  tags: [mongodb, mongodb-exporter]
+
+- name: Copy Mongodb-Exporter Binary to /usr/local/bin
+  copy:
+    src: "/tmp/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}/mongodb_exporter"
+    dest: /usr/local/bin/mongodb-exporter
+    mode: '0644'
+    remote_src: yes
+  become: yes
+  when: download_result_exporter.stat.exists
+  tags: [mongodb, mongodb-exporter]
+
+- name: Find Downloaded Mongodb-Exporter files
+  find:
+    paths: "/tmp"
+    patterns: "mongodb_exporter*"
+    file_type: any
+    recurse: yes
+  register: files_and_dir_to_delete
+  tags: [mongodb, mongodb-exporter]
+
+- name: Delete Downloaded Mongodb-Exporter Files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ files_and_dir_to_delete.files }}"
+  become: yes
+  tags: [mongodb, mongodb-exporter]
+
+- name: Create the MongoDB Prometheus Exporter User
+  user:
+    name: "{{ mongodb_exporter_user }}"
+    comment: "MongoDB Prometheus exporter user (Ansible Managed)"
+    createhome: "no"
+    shell: "/usr/sbin/nologin"
+    system: "yes"
+  become: yes
+  tags: [mongodb, mongodb-exporter]
+
+- name: Change Permissions to Mongodb-Exporter Binary
+  file:
+    path: /usr/local/bin/mongodb-exporter
+    mode: '0755'
+    owner: "{{ mongodb_exporter_user }}"
+    group: "{{ mongodb_exporter_user }}"
+  become: yes
+  tags: [mongodb, mongodb-exporter]
+
+- name: Ensure Mongodb-Exporter Service File is Available.
+  template:
+    src: mongodb-exporter.service.j2
+    dest: /etc/systemd/system/mongodb-exporter.service
+    mode: 0644
+    backup: true
+  become: yes
+  notify:
+    - Restart Mongodb-Exporter
+  tags: [mongodb, mongodb-exporter]
+
+- name: Ensure Mongodb-Exporter Service is Started and Enabled on Boot
+  service:
+    name: mongodb-exporter
+    state: started
+    enabled: true
+  become: yes
+  tags: [mongodb, mongodb-exporter]

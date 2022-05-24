@@ -1,0 +1,10 @@
+[mongodb-org-{{ mongodb_major_version }}]
+name=MongoDB Repository
+baseurl={{ mongodb_repository[mongodb_major_version] }}
+{% if mongodb_repository_gpgkey[mongodb_major_version] is defined and mongodb_repository_gpgkey[mongodb_major_version] != '' %}
+gpgcheck=1
+gpgkey={{ mongodb_repository_gpgkey[mongodb_major_version] }}
+{% else %}
+gpgcheck=0
+{% endif %}
+enabled=1

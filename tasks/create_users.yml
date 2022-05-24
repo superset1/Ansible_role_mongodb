@@ -1,0 +1,117 @@
+---
+
+- name: "Create Root User {{ mongodb_root_admin_name }}{{ ' in a Replicaset' if mongodb_replication_enabled else '' }}"
+  mongodb_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    update_password: "{{ (mongodb_admin_update_password or mongodb_root_admin_exist.failed) | ternary('always', 'on_create') }}"
+    state: present
+    roles: "{{ item.roles }}"
+    database: "{{ mongodb_login_database }}"
+    login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
+    login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
+    login_host: "localhost"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+  with_items:
+    - {
+      name: "{{ mongodb_root_admin_name }}",
+      password: "{{ mongodb_root_admin_password }}",
+      roles: "root"
+      }
+  tags: [mongodb, mongodb-create-admin-users]
+
+- name: "Ensure that Root User {{ mongodb_root_admin_name }} Was Created"
+  community.mongodb.mongodb_shell:
+    db: "admin"
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    # eval: "db.getUser('{{ mongodb_root_admin_name }}')"
+    eval: "rs.status()"
+    # transform: json
+  register: mongodb_root_admin_exist
+  changed_when: false
+  tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+
+- name: "Create Administrative Users{{ ' in a Replicaset' if mongodb_replication_enabled else '' }}"
+  mongodb_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    update_password: "{{ mongodb_admin_update_password | ternary('always', 'on_create') }}"
+    state: present
+    roles: "{{ item.roles }}"
+    database: "{{ mongodb_login_database }}"
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+  with_items:
+    - {
+      name: "{{ mongodb_user_admin_name }}",
+      password: "{{ mongodb_user_admin_password }}",
+      roles: "userAdminAnyDatabase",
+      }
+    - {
+      name: "{{ mongodb_root_backup_name }}",
+      password: "{{ mongodb_root_backup_password }}",
+      roles: "backup,clusterMonitor"
+      }
+  tags: [mongodb, mongodb-create-admin-users]
+
+- name: Create Oplog User in a Replicaset
+  mongodb_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    update_password: "{{ mongodb_admin_update_password | ternary('always', 'on_create') }}"
+    state: present
+    roles:
+      - db: local
+        role: read
+    database: "{{ mongodb_login_database }}"
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+  with_items:
+    - "{{ mongodb_oplog_users | default([]) }}"
+  when:
+    - mongodb_replication_enabled
+    - mongodb_master is defined
+    - mongodb_master
+    - item.name is defined and item.name | length > 0
+    - item.password is defined and item.password | length > 0
+  tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users]
+
+- name: "Add Normal Users{{ ' in a Replicaset' if mongodb_replication_enabled else '' }}"
+  mongodb_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    update_password: "{{ mongodb_user_update_password | ternary('always', 'on_create') }}"
+    state: present
+    roles: "{{ item.roles }}"
+    database: "{{ item.database | default(mongodb_login_database) }}"
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+  with_items:
+    - "{{ mongodb_users | default([]) }}"
+  when: 
+    - item.name is defined and item.name | length > 0
+    - item.password is defined and item.password | length > 0
+    - item.roles is defined and item.roles | length > 0
+  tags: [mongodb, mongodb-add-users]

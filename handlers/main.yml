@@ -1,0 +1,39 @@
+---
+
+- name: Systemd Daemon Reload
+  systemd:
+    daemon_reload: yes
+  when: mongodb_manage_systemd_unit | bool
+
+- name: Restart Mongodb Systemd Service
+  systemd:
+    name: "{{ mongodb_daemon_name }}"
+    state: restarted
+  when: mongodb_manage_systemd_unit | bool
+
+# - name: Restart Mongodb Service
+#   service:
+#     name: "{{ mongodb_daemon_name }}"
+#     state: restarted
+#   when: mongodb_manage_service | bool
+
+- name: Wait when Mongodb is Started
+  wait_for:
+    host: "{{ item }}"
+    port: "{{ mongodb_net_port }}"
+    timeout: 120
+    delay: 10
+  with_items: "{{ mongodb_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
+
+- name: Restart Mongodb MMS Monitoring Agent
+  service:
+    name: mongodb-mms-monitoring-agent
+    state: restarted
+  when: mongodb_manage_service | bool
+
+- name: Restart Mongodb-Exporter
+  systemd:
+    name: mongodb-exporter
+    daemon_reload: true
+    state: restarted
+  when: mongodb_manage_systemd_unit | bool

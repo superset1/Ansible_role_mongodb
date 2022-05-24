@@ -1,0 +1,84 @@
+---
+
+- name: Check Version MongoDB if Variable mongodb_net_ssl_enabled is True
+  assert:
+    that:
+      - (mongodb_net_ssl_enabled and mongodb_major_version is version("4.2", "<")) or (not mongodb_net_ssl_enabled)
+    fail_msg: 'MongoDB 4.2 deprecates ssl options in favor of tls options with identical functionality!'
+    quiet: true
+  tags: [mongodb, mongodb-configure]
+
+- name: Check Value of Variable mongodb_net_ssl_mode if mongodb_net_ssl_enabled is True
+  assert:
+    that:
+      - (mongodb_net_ssl_enabled and mongodb_net_ssl_mode is regex("requireSSL|preferSSL|preferSSL")) or (not mongodb_net_ssl_enabled)
+    fail_msg: 'Set mongodb_net_ssl_mode to (requireSSL/preferSSL/allowSSL) or set mongodb_net_ssl_mode to False!'
+    quiet: true
+  tags: [mongodb, mongodb-configure]
+
+- name: Check that Group mongo_cluster is Exist
+  assert:
+    that:
+      - (mongodb_replication_enabled and groups.mongo_cluster is defined) or (not mongodb_replication_enabled)
+    fail_msg: 'Create mongo_cluster group in hosts file and add your servers to it!'
+    quiet: true
+  tags: [mongodb, mongodb-configure]
+
+- name: Check Value of Variable mongodb_master if mongodb_replication_enabled is True
+  assert:
+    that:
+      - (mongodb_replication_enabled and hostvars|dictsort|selectattr('1.mongodb_master', 'defined')|map(attribute='1.mongodb_master')|list) or (not mongodb_replication_enabled)
+    fail_msg: 'Set mongodb_master to True next to the master server or set mongodb_replication_enabled to False in hosts file!'
+    quiet: true
+  tags: [mongodb, mongodb-configure]
+
+- name: Check Value of Variable mongodb_keyfile_content if mongodb_replication_enabled is True
+  assert:
+    that:
+      - (mongodb_replication_enabled and mongodb_keyfile_content | length > 0) or (not mongodb_replication_enabled)
+    fail_msg: 'Set mongodb_keyfile_content or mongodb_replication_enabled to False!'
+    quiet: true
+  tags: [mongodb, mongodb-configure]
+
+- name: Check that Admins Passwords are Not Empty
+  assert:
+    that:
+      - mongodb_root_admin_password | length > 0
+      - mongodb_user_admin_password | length > 0
+      - mongodb_root_backup_password | length > 0
+      - "{% if mongodb_exporter_enabled %}mongodb_exporter_password | length > 0{% endif %}"
+    quiet: true
+  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
+  
+- name: "Check that Root User {{ mongodb_root_admin_name }} Already Exist"
+  community.mongodb.mongodb_shell:
+    db: "admin"
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    eval: "rs.status()"
+  register: mongodb_root_admin_exist
+  changed_when: false
+  ignore_errors: yes
+  when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or
+        not mongodb_replication_enabled
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
+
+- name: Register CPU AVX Flag
+  shell: "set -o pipefail && grep -m 1 ^flags /proc/cpuinfo | grep -qw avx"
+  args:
+    executable: "/bin/bash"
+  register: cpu_avx_flag_support
+  changed_when: false
+  ignore_errors: yes
+  tags: [mongodb, mongodb-configure]
+
+- name: Check AVX Flag if Used mongodb_version >= '5.0'
+  assert:
+    that:
+      - (mongodb_major_version is version("5.0", ">=") and cpu_avx_flag_support.rc == 0) or (mongodb_major_version is version("5.0", "<"))
+    fail_msg: 'AVX cpu extension must be enabled for mongodb_version >= "5.0"!'
+    quiet: true
+  tags: [mongodb, mongodb-install, mongodb-configure]

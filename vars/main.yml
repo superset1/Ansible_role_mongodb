@@ -1,0 +1,26 @@
+---
+# Constant vars
+
+#----- Connection vars -----#
+ansible_become: true
+ansible_become_user: root
+ansible_host_key_checking: false
+ansible_python_interpreter: /usr/bin/python3
+
+vault_token: "{{ lookup('env','VAULT_TOKEN') }}"
+vault_url: "{{ lookup('env','VAULT_ADDR') }}"
+#----- Connection vars -----#
+
+os: "linux"
+bin_arch: "amd64"
+
+mongodb_major_version: "{{ mongodb_version[0:3] }}"
+mongodb_apt_keyserver: keyserver.ubuntu.com
+mongodb_apt_key_id:
+  "3.4": "0C49F3730359A14518585931BC711F9BA15703C6"
+  "3.6": "2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5"
+  "4.0": "9DA31620334BD75D9DCB49F368818C72E52529D4"
+  "4.2": "E162F504A20CDF15827F718D4B7C549A058F8B6B"
+  "4.4": "20691EEC35216C63CAF66CE1656408E390CFB1F5"
+  "5.0": "F5679A222C647C87527C2F8CB00A0BD1E2C63C11"
+  "6.0": "39BD841E4BE5FB195A65400E6A26B1AE64C3C388"

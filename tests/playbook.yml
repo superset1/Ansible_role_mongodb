@@ -1,0 +1,7 @@
+---
+# Role: Mongodb v1.0.1
+
+- name: Mongodb Role
+  hosts: mongo_cluster
+  roles:
+    - mongodb

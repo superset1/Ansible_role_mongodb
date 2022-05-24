@@ -1,0 +1,38 @@
+---
+
+#----- Mongodb vars -----#
+mongodb_version: "5.0"
+mongodb_replication_enabled: true
+
+mongodb_root_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
+mongodb_user_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_user_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
+mongodb_root_backup_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_backup_password token={{ vault_token }} url={{ vault_url }}') }}"
+mongodb_exporter_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_exporter_password token={{ vault_token }} url={{ vault_url }}') }}"
+mongodb_keyfile_content: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_keyfile_content token={{ vault_token }} url={{ vault_url }}') }}"
+
+mongodb_users: # If you want to add multiple regular users
+  - {
+    name: user1,
+    password: "user1",
+    roles: readWriteAnyDatabase,
+    database: admin
+    }
+  - {
+    name: user2,
+    password: "user2",
+    roles: readWriteAnyDatabase,
+    database: admin
+    }
+  - {
+    name: user3,
+    password: "user3",
+    roles: readWrite,
+    database: admin
+    }
+
+mongodb_oplog_users: 
+  - {
+    name: oplog,
+    password: oplog
+    }
+#----- Mongodb vars -----#
