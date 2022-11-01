@@ -25,16 +25,16 @@
   tags: [mongodb, mongodb-create-admin-users]
 
 - name: "Ensure that Root User {{ mongodb_root_admin_name }} Was Created"
-  community.mongodb.mongodb_shell:
-    db: "admin"
+  community.mongodb.mongodb_status:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "{{ inventory_hostname }}"
+    login_host: localhost
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    # eval: "db.getUser('{{ mongodb_root_admin_name }}')"
-    eval: "rs.status()"
-    # transform: json
+    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    poll: 3
+    interval: 1
   register: mongodb_root_admin_exist
   changed_when: false
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
