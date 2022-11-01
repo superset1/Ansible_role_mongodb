@@ -1,15 +1,9 @@
 ---
-- hosts: all
-  remote_user: root
-  become: yes
+
+- name: Preparing MongoDB for tests
+  hosts: all
   gather_facts: no
   tasks:
-    # - name: Install Python3
-    #   raw: |
-    #     sudo apt update
-    #     sudo apt install python3
-      # when: ansible_os_family == 'Debian'
-
     - name: "Add Hostnames to /etc/hosts"
       raw: |
         sudo apt update
@@ -23,10 +17,11 @@
     - name: "Check systemctl"
       shell: systemctl
     
-    - debug:
-        msg: 
-          - "{{ansible_host}}"
-          # - "{{hostvars[inventory_hostname].ansible_default_ipv4.address}}"
+    # - name: Install Python3
+    #   raw: |
+    #     sudo apt update
+    #     sudo apt install python3
+    #   when: ansible_os_family == 'Debian'
 
     # - name: Install Python3
     #   yum:

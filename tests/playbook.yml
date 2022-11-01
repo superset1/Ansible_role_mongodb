@@ -1,5 +1,5 @@
 ---
-# Role: Mongodb v1.0.2
+# Role: Mongodb v1.0.3
 
 - name: Mongodb Role
   hosts: mongo_cluster

@@ -29,26 +29,26 @@ mongodb_keyfile_content: |
 mongodb_users: # If you want to add multiple regular users
   - {
     name: user1,
-    password: "user1",
-    roles: readWriteAnyDatabase,
-    database: admin
+    password: "password1",
+    roles: readWrite,
+    database: database1
     }
   - {
     name: user2,
-    password: "user2",
-    roles: readWriteAnyDatabase,
-    database: admin
+    password: "password2",
+    roles: readWrite,
+    database: database2
     }
   - {
     name: user3,
-    password: "user3",
+    password: "password3",
     roles: readWrite,
-    database: admin
+    database: database3
     }
 
 mongodb_oplog_users: 
   - {
     name: oplog,
-    password: oplog
+    password: oplog_password
     }
 #----- Mongodb vars -----#

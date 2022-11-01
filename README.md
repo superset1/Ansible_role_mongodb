@@ -1,7 +1,7 @@
 Ansible role for MongoDB 
 ===========
 
-Version 1.0.2
+Version v1.0.3
 
 ## Content
 ------------
@@ -295,21 +295,21 @@ mongodb_keyfile_content: "{{ lookup('hashi_vault', 'secret=services/test-namespa
 mongodb_users: # If you want to add multiple regular users
   - {
     name: user1,
-    password: "user1",
-    roles: readWriteAnyDatabase,
-    database: admin
+    password: "password1",
+    roles: readWrite,
+    database: database1
     }
   - {
     name: user2,
-    password: "user2",
-    roles: readWriteAnyDatabase,
-    database: admin
+    password: "password2",
+    roles: readWrite,
+    database: database2
     }
   - {
     name: user3,
-    password: "user3",
+    password: "password3",
     roles: readWrite,
-    database: admin
+    database: database3
     }
 ```
 
@@ -323,20 +323,20 @@ mongodb_users:
   - {
     name: user1,
     password: "password1",
-    roles: readWriteAnyDatabase,
-    database: admin
+    roles: readWrite,
+    database: database1
     }
   - {
     name: user2,
     password: "password2",
-    roles: readWriteAnyDatabase,
-    database: admin
+    roles: readWrite,
+    database: database2
     }
   - {
     name: user3,
     password: "password3",
     roles: readWrite,
-    database: admin
+    database: database3
     }
 ```
 
@@ -344,8 +344,8 @@ mongodb_users:
 ```yaml
 mongodb_oplog_users:
   - {
-    name: oplog1,
-    password: password1
+    name: oplog,
+    password: oplog_password
     }
 ```
 

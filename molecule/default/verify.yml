@@ -1,7 +1,7 @@
 ---
 # This is an example playbook to execute Ansible tests.
 
-- name: Verify
+- name: Verify MongoDB
   hosts: mongo_cluster
   gather_facts: true
 
@@ -30,7 +30,7 @@
       var: rsstatus.stdout_lines | replace('\t','')
     when: mongodb_arbiter is undefined
 
-  - name: Check that MongoDB is Stabilise
+  - name: Check that Replicaset is Stabilise
     community.mongodb.mongodb_status:
       login_user: "mongoroot"
       login_password: "{{ mongodb_root_admin_password }}"

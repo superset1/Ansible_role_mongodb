@@ -14,7 +14,7 @@
     login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
+    replica_set: "{{ mongodb_replication_replset if (mongodb_replication_enabled and not mongodb_root_admin_exist.failed ) else omit }}"
     ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
   with_items:
     - {

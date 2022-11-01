@@ -1,4 +1,5 @@
 ---
+
 dependency:
   name: galaxy
 driver:
@@ -64,43 +65,56 @@ provisioner:
     links:
       hosts: ../../tests/hosts
       group_vars: ../../tests/group_vars/
-    # group_vars:
-    #   mongo_cluster:
-    #     ansible_python_interpreter: auto_silent
-    # host_vars:
-    #   host1:
-    #     ansible_python_interpreter: auto_silent
-    #     mongodb_master: True
-    #     ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-    #   host2:
-    #     ansible_python_interpreter: auto_silent
-    #     ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-    #   host3:
-    #     ansible_python_interpreter: auto_silent
-    #     mongodb_arbiter: True
-    #     ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+    host_vars:
+      host1:
+        ansible_python_interpreter: auto_silent
+        mongodb_master: True
+        ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+      host2:
+        ansible_python_interpreter: auto_silent
+        ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+      host3:
+        ansible_python_interpreter: auto_silent
+        mongodb_arbiter: True
+        ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
         
-  # inventory:
-  #   host_vars:
-  #     mongo1:
-  #       ansible_python_interpreter: auto_silent
-  #       mongodb_master: true
-  #       mongodb_replication_params:
-  #         - host_name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-  #     mongo2:
-  #       ansible_python_interpreter: auto_silent
-  #       mongodb_replication_params:
-  #         - host_name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-  #     mongo3:
-  #       ansible_python_interpreter: auto_silent
-  #       mongodb_net_port: 30000
-  #       mongodb_storage_journal_enabled: "{{ mongodb_major_version is version('4.0', '>=') }}"
-  #       mongodb_storage_smallfiles: true
-  #       mongodb_storage_prealloc: false
-  #       mongodb_replication_params:
-  #         - host_name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-  #           host_port: "{{ mongodb_net_port }}"
-  #           host_type: arbiter
-  
 verifier:
   name: ansible
+
+scenario:
+  create_sequence:
+    - dependency
+    - create
+    - prepare
+  check_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - create
+    - prepare
+    - converge
+    - check
+    - destroy
+  converge_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+  destroy_sequence:
+    - dependency
+    - cleanup
+    - destroy
+  test_sequence:
+    - dependency
+    - lint
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    # - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
