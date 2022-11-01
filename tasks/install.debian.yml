@@ -70,7 +70,6 @@
 
 - name: Shell Apt Update to Allow Repository Change
   shell: apt update -y --allow-releaseinfo-change
-  # when: (hostvars|dictsort|selectattr('1.mongodb_root_admin_exist.failed', 'true')|map(attribute='1.inventory_hostname')|list)[0] is defined
   tags: [mongodb, mongodb-install]
 
 - name: Install Gnupg Package

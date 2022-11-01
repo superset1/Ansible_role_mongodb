@@ -50,23 +50,45 @@
     quiet: true
   tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
   
-- name: "Check that Root User {{ mongodb_root_admin_name }} Already Exist"
+- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exist in the Replicaset
   community.mongodb.mongodb_status:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: localhost
+    login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
-    poll: 3
+    replica_set: "{{ mongodb_replication_replset }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+    poll: 2
     interval: 1
   ignore_errors: yes
-  register: mongodb_root_admin_exist
-  when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or
-        not mongodb_replication_enabled
+  register: mongodb_root_admin_exist_replicaset
+  when:
+    - mongodb_replication_enabled
+    - mongodb_master is defined
+    - mongodb_master
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
 
+- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exist in the Single Database
+  community.mongodb.mongodb_info:
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "localhost"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+  async: 3
+  poll: 2
+  ignore_errors: yes
+  register: mongodb_root_admin_exist_single
+  when: not mongodb_replication_enabled
+  tags: [mongodb, mongodb-create-admin-users, mongodb-exporter]
+
+- name: Set Results of Root User Existence Check
+  set_fact: 
+    mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_single | default({}))  }}"
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
+  
 - name: Register CPU AVX Flag if Used mongodb_version >= '5.0'
   shell: "set -o pipefail && grep -m 1 ^flags /proc/cpuinfo | grep -qw avx"
   args:

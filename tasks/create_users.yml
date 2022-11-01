@@ -1,6 +1,6 @@
 ---
 
-- name: "Create Root User {{ mongodb_root_admin_name }}{{ ' in a Replicaset' if mongodb_replication_enabled else '' }}"
+- name: Create Root User '{{ mongodb_root_admin_name }}' {{ 'in the Replicaset' if mongodb_replication_enabled else '' }}
   any_errors_fatal: true
   mongodb_user:
     name: "{{ item.name }}"
@@ -9,13 +9,13 @@
     state: present
     roles: "{{ item.roles }}"
     database: "{{ mongodb_login_database }}"
-    login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
-    login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
+    login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
+    login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
     login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if (mongodb_replication_enabled and not mongodb_root_admin_exist.failed ) else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    replica_set: "{{ (mongodb_replication_enabled and not mongodb_root_admin_exist.failed ) | ternary(mongodb_replication_replset, omit) }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
     - {
       name: "{{ mongodb_root_admin_name }}",
@@ -24,22 +24,46 @@
       }
   tags: [mongodb, mongodb-create-admin-users]
 
-- name: "Ensure that Root User {{ mongodb_root_admin_name }} Was Created"
+- name: Ensure that Root User '{{ mongodb_root_admin_name }}' Was Created in the Replicaset
   community.mongodb.mongodb_status:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: localhost
+    login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
-    poll: 3
+    replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+    poll: 2
     interval: 1
-  register: mongodb_root_admin_exist
+  register: mongodb_root_admin_exist_replicaset
   changed_when: false
+  when:
+    - mongodb_replication_enabled
+    - mongodb_master is defined
+    - mongodb_master
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
-- name: "Create Administrative Users{{ ' in a Replicaset' if mongodb_replication_enabled else '' }}"
+- name: Ensure that Root User '{{ mongodb_root_admin_name }}' Was Created in the Single Database
+  community.mongodb.mongodb_info:
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "localhost"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+  async: 3
+  poll: 2
+  register: mongodb_root_admin_exist_single
+  changed_when: false
+  when: not mongodb_replication_enabled
+  tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+
+- name: Set Results of Root User Existence Check
+  set_fact: 
+    mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_single | default({}))  }}"
+  tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+
+- name: Create Administrative Users {{ 'in the Replicaset' if mongodb_replication_enabled else '' }}
   mongodb_user:
     name: "{{ item.name }}"
     password: "{{ item.password }}"
@@ -52,8 +76,8 @@
     login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
     - {
       name: "{{ mongodb_user_admin_name }}",
@@ -67,7 +91,7 @@
       }
   tags: [mongodb, mongodb-create-admin-users]
 
-- name: Create Oplog User in a Replicaset
+- name: Create Oplog User in the Replicaset
   mongodb_user:
     name: "{{ item.name }}"
     password: "{{ item.password }}"
@@ -82,8 +106,8 @@
     login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
     - "{{ mongodb_oplog_users | default([]) }}"
   when:
@@ -94,7 +118,7 @@
     - item.password is defined and item.password | length > 0
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users]
 
-- name: "Add Normal Users{{ ' in a Replicaset' if mongodb_replication_enabled else '' }}"
+- name: Add Normal Users {{ 'in the Replicaset' if mongodb_replication_enabled else '' }}
   mongodb_user:
     name: "{{ item.name }}"
     password: "{{ item.password }}"
@@ -107,8 +131,8 @@
     login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
+    replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
     - "{{ mongodb_users | default([]) }}"
   when: 

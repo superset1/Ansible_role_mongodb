@@ -1,6 +1,6 @@
 ---
 
-- name: "Create Monitor User {{ mongodb_exporter_name }}"
+- name: Create Monitor User '{{ mongodb_exporter_name }}'
   mongodb_user:
     name: "{{ mongodb_exporter_name }}"
     password: "{{ mongodb_exporter_password }}"
@@ -12,15 +12,14 @@
       - db: local
         role: read
     database: "{{ mongodb_login_database }}"
-    login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
-    login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
+    login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
+    login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
     login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset if mongodb_replication_enabled else omit }}"
-    ssl: "{{ True if (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') else False }}"
-  when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or
-        not mongodb_replication_enabled
+    replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+  when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or (not mongodb_replication_enabled)
   tags: [mongodb, mongodb-exporter]
 
 - name: Set MongoDB Server Prometheus Exporter Download Link

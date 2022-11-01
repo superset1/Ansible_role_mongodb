@@ -1,7 +1,7 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.1.0
+Version v1.2.0
 
 ## Content
 ------------
