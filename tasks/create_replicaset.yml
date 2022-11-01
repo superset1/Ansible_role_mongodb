@@ -12,7 +12,7 @@
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
     reconfigure: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary(mongodb_replication_reconfigure, false) }}"
     force: true
-    members: "{{ groups.mongo_cluster | join(':' + mongodb_net_port | string + ',') }}"
+    members: "{{ groups.mongo_cluster | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
     arbiter_at_index: "{{ groups.mongo_cluster.index(mongodb_arbiter_index) if mongodb_arbiter_index is defined else omit }}"
   tags: [mongodb, mongodb-replicaset]
 
