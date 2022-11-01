@@ -1,4 +1,4 @@
 [mongo_cluster]
-www.example-host1.com  mongodb_master=True
-www.example-host2.com 
-www.example-host3.com mongodb_arbiter=True
+host1  mongodb_master=True
+host2 
+host3 mongodb_arbiter=True

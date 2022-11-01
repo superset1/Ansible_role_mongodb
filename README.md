@@ -1,7 +1,7 @@
 Ansible role for MongoDB 
 ===========
 
-Version 1.0.1
+Version 1.0.2
 
 ## Content
 ------------
@@ -43,10 +43,12 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Supports replicaset
 - Supports arbiter
 - Idempotency: the role does not reload the working database
+- Added WB mirrors for versions 4.4 and 5.0
 
 ### Requirements
 - pip install hvac (if need to use vault module)
 - create group in hosts file `[mongo_cluster]`
+- ansible-galaxy collection install community.mongodb (check that `community.mongodb` module >= 1.4)
 - admins password required
   - `mongodb_user_admin_password`
   - `mongodb_root_admin_password`
@@ -114,7 +116,6 @@ mongodb_pymongo_pip_version: 3.12                # Choose PyMong version to inst
 mongodb_admin_update_password: false             # Update password every play if true
 mongodb_user_update_password: false              # Update password every play if true
 mongodb_manage_service: true
-mongodb_manage_systemd_unit: true
 mongodb_systemd_unit_limit_nofile: 64000
 mongodb_systemd_unit_limit_nproc: 64000
 

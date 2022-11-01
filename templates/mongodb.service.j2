@@ -8,7 +8,7 @@ Wants=network-online.target
 [Service]
 User={{ mongodb_user }}
 Group={{ mongodb_user }}
-{% if mongodb_use_numa | bool %}
+{% if mongodb_use_numa %}
 ExecStart=/usr/bin/numactl --interleave=all /usr/bin/mongod --config /etc/mongod.conf
 {% else %}
 ExecStart=/usr/bin/mongod --config /etc/mongod.conf

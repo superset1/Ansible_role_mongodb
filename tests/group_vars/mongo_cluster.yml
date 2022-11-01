@@ -1,14 +1,30 @@
 ---
 
 #----- Mongodb vars -----#
-mongodb_version: "5.0"
+mongodb_version: "4.4"
 mongodb_replication_enabled: true
 
-mongodb_root_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
-mongodb_user_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_user_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
-mongodb_root_backup_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_backup_password token={{ vault_token }} url={{ vault_url }}') }}"
-mongodb_exporter_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_exporter_password token={{ vault_token }} url={{ vault_url }}') }}"
-mongodb_keyfile_content: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_keyfile_content token={{ vault_token }} url={{ vault_url }}') }}"
+mongodb_root_admin_password: "mongoroot"
+mongodb_user_admin_password: "mongoadmin"
+mongodb_root_backup_password: "mongobackup"
+mongodb_exporter_password: "mongoexporter"
+mongodb_keyfile_content: |
+  bWHHGSKogOQFVDhOMBLhPL2Ig+OWrmV5CjpsoojZ9URVAfvLB6YAndIrrQI4fC49
+  Xx12eQ+FJ7lWFfPe5K2Tof3Iy/ljPMTSCe5YYEVY2KFO1Lv9/+y8RpURoSdONOMI
+  IkPhb3g2c3Sf2Dhut1FDz/YHU2nv3dsVHsRch8eQEuApv+ETJEIDQeEsqX3y6pbI
+  rH3nf1F6VRkrb66Kd1phh+9+dFhFajM9WCYtudTj6wdp/KLBUuso1RP+0iAFjUBy
+  ma98YPAukU07RO9XE4UHjS+fnEzdMal4nTZ9DenOhXSnQ7gtHfWELc+edc5xARyS
+  dCZt7jByu2VaQ/3Km3J++kHjBPasqSk2700aOM31o4ZXNxcNTUnP3OcMOXaNrY11
+  Lz3olQZhAqMPMQyj+PfUWC/la5toNqKZUHFKk9enVBU0AVEFCrWI6bJS7qETMpmF
+  AjqPvPfelEUOqN8fbZFTIkMAmP5sZ+dK5TX4ew1alUpA9gOCQYe3WnbViYFX5vav
+  IPMJ7ALGlCCQRVQpZida8pfJ1UWeVkfgv6wjL3sXA87g7hnN5vhgPHmxSFEIWMro
+  UoYVDy7IFvligwt6OhfeB5xd4d6CgKVCxAnJJHtil26XGfjyTFT7lgr6y6JuAzba
+  JLDowGEC9511AHIzGS8RrHixU6m02sPYOPuK0YT43LoRGa9bANg0pG6qIOIQP9nu
+  gz6FX467M+WcNPkrjUwHf7KHerhx4yJ6V+8QJvZCOQNZwHhXdqQgeukUGGN/KJP7
+  QOSP57X2Cg/zqi95dFNJBjamHD0oQLx3IECH9oofcVza8NeD16Hb6+rW2Wqf/jqn
+  hd0FWutQQ6AJ5zuocFkFuwyB0gxRUbm3KKX7NvqWY/WEaUEVSgVK0A70UQN3iyGu
+  DpKM7jXyoQGefz6+8qYlYunlLUUesYoXxYAHsQbRmC/aMo2uqyr3F+ttF1YkwiAl
+  rDlTeqGAovCPGdsE/7vMrDmf6byg6d/E/McA1gS5kUQdMQtH
 
 mongodb_users: # If you want to add multiple regular users
   - {

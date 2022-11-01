@@ -11,7 +11,6 @@
     enabled: false
   when:
     - ansible_service_mgr == "systemd"
-    - mongodb_manage_systemd_unit | bool
     - "'mongodb-exporter.service' in ansible_facts.services"
   notify:
     - Systemd Daemon Reload
@@ -25,7 +24,6 @@
     enabled: false
   when:
     - ansible_service_mgr == "systemd"
-    - mongodb_manage_systemd_unit | bool
     - "mongodb_daemon_name + '.service' in ansible_facts.services"
   notify:
     - Systemd Daemon Reload

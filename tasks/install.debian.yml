@@ -68,6 +68,10 @@
     - ansible_service_mgr == "systemd"
   tags: [mongodb, mongodb-install]
 
+- name: Shell Apt Update to Allow Repository Change
+  shell: apt update -y --allow-releaseinfo-change
+  tags: [mongodb, mongodb-install]
+
 - name: Install Gnupg Package
   apt:
     name: gnupg

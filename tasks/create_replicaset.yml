@@ -1,6 +1,7 @@
 ---
 
 - name: "Configure a Replicaset {{ mongodb_replication_replset }}"
+  any_errors_fatal: true
   community.mongodb.mongodb_replicaset:
     login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
     login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"
@@ -16,6 +17,7 @@
   tags: [mongodb, mongodb-replicaset]
 
 - name: Wait for the Replicaset to Stabilise
+  any_errors_fatal: true
   community.mongodb.mongodb_status:
     login_user: "{{ mongodb_root_admin_name if not mongodb_root_admin_exist.failed else omit }}"
     login_password: "{{ mongodb_root_admin_password if not mongodb_root_admin_exist.failed else omit }}"

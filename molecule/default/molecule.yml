@@ -1,0 +1,106 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+# lint: |
+#   set -e
+#   yamllint .
+#   ansible-lint .
+#   flake8 library --ignore=E501,E402
+platforms:
+  - name: host1
+    # image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
+    # image: "debian:10"
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-debian10}-ansible:latest"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    # groups:
+    #   - mongo_cluster
+  - name: host2
+    # image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
+    # image: "debian:10"
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-debian10}-ansible:latest"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    # groups:
+    #   - mongo_cluster
+  - name: host3
+    # image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
+    # image: "debian:10"
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-debian10}-ansible:latest"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    # groups:
+    #   - mongo_cluster
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      pipelining: true
+  log: true
+  playbooks:
+    converge: ../../tests/playbook.yml
+  # playbooks:
+  #   converge: ${MOLECULE_PLAYBOOK:-../default/converge.yml}
+  #   prepare:  ${MOLECULE_PLAYBOOK:-../default/prepare.yml}
+  #   verify:  ${MOLECULE_PLAYBOOK:-../default/verify.yml}
+  # env:
+  #   MONGODB_VERSION: ${MONGODB_VERSION:-4.4}
+  #   MONGODB_PACKAGE: ${MONGODB_PACKAGE:-mongodb-org}
+    # AUTH_STATE: ${AUTH_STATE:-disabled}
+    # REPLICASET: ${REPLICASET:-testrs}
+
+  inventory:
+    links:
+      hosts: ../../tests/hosts
+      group_vars: ../../tests/group_vars/
+    # group_vars:
+    #   mongo_cluster:
+    #     ansible_python_interpreter: auto_silent
+    # host_vars:
+    #   host1:
+    #     ansible_python_interpreter: auto_silent
+    #     mongodb_master: True
+    #     ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+    #   host2:
+    #     ansible_python_interpreter: auto_silent
+    #     ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+    #   host3:
+    #     ansible_python_interpreter: auto_silent
+    #     mongodb_arbiter: True
+    #     ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+        
+  # inventory:
+  #   host_vars:
+  #     mongo1:
+  #       ansible_python_interpreter: auto_silent
+  #       mongodb_master: true
+  #       mongodb_replication_params:
+  #         - host_name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+  #     mongo2:
+  #       ansible_python_interpreter: auto_silent
+  #       mongodb_replication_params:
+  #         - host_name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+  #     mongo3:
+  #       ansible_python_interpreter: auto_silent
+  #       mongodb_net_port: 30000
+  #       mongodb_storage_journal_enabled: "{{ mongodb_major_version is version('4.0', '>=') }}"
+  #       mongodb_storage_smallfiles: true
+  #       mongodb_storage_prealloc: false
+  #       mongodb_replication_params:
+  #         - host_name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+  #           host_port: "{{ mongodb_net_port }}"
+  #           host_type: arbiter
+  
+verifier:
+  name: ansible

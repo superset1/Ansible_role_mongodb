@@ -7,12 +7,11 @@ mongodb_package_state: present
 mongodb_version: "4.4"
 
 mongodb_pymongo_from_pip: true                   # Install latest PyMongo via PIP or package manager
-mongodb_pymongo_pip_version: 3.12                # Choose PyMong version to install from pip. If not set use latest
+mongodb_pymongo_pip_version: 4.1.1               # Choose PyMong version to install from pip. If not set use latest
 
 mongodb_admin_update_password: false             # Update password every play if true
 mongodb_user_update_password: false              # Update password every play if true
 mongodb_manage_service: true
-mongodb_manage_systemd_unit: true
 mongodb_systemd_unit_limit_nofile: 64000
 mongodb_systemd_unit_limit_nproc: 64000
 

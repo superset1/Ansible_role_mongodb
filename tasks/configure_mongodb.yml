@@ -73,6 +73,7 @@
     mode: 0644
   notify:
     - Restart Mongodb Systemd Service
+    - Restart Mongodb Service
     - Wait when Mongodb is Started
   tags: [mongodb, mongodb-configure]
 
@@ -83,22 +84,7 @@
     owner: root
     group: root
     mode: '0644'
-  when:
-    - ansible_service_mgr == "systemd"
-    - mongodb_manage_systemd_unit
-  notify:
-    - Systemd Daemon Reload
-    - Restart Mongodb Systemd Service
-    - Wait when Mongodb is Started
-  tags: [mongodb, mongodb-configure]
-
-- name: Enable MongoDB Service
-  systemd:
-    name: "{{ mongodb_daemon_name }}.service"
-    enabled: true
-  when:
-    - ansible_service_mgr == "systemd"
-    - mongodb_manage_systemd_unit
+  when: ansible_service_mgr == "systemd"
   notify:
     - Systemd Daemon Reload
     - Restart Mongodb Systemd Service

@@ -1,0 +1,44 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: mongo_cluster
+  gather_facts: true
+
+  tasks:
+  - name: "Check that User mongoroot Exist in All Replicas"
+    community.mongodb.mongodb_shell:
+      db: "admin"
+      login_user: "mongoroot"
+      login_password: "{{ mongodb_root_admin_password }}"
+      login_host: "{{ inventory_hostname }}"
+      login_port: "{{ mongodb_net_port | default(27017) }}"
+      login_database: "admin"
+      eval: "rs.status()"
+      additional_args:
+        verbose: True
+    changed_when: false
+    when: mongodb_arbiter is undefined
+
+  - name: Check rs.status()
+    shell: mongo -u mongoroot -p {{ mongodb_root_admin_password }} --eval "rs.status()"
+    register: rsstatus
+    when: mongodb_arbiter is undefined
+
+  - name: Print rs.status()
+    debug:
+      var: rsstatus.stdout_lines | replace('\t','')
+    when: mongodb_arbiter is undefined
+
+  - name: Check that MongoDB is Stabilise
+    community.mongodb.mongodb_status:
+      login_user: "mongoroot"
+      login_password: "{{ mongodb_root_admin_password }}"
+      login_host: localhost
+      login_port: "{{ mongodb_net_port | default(27017) }}"
+      login_database: "admin"
+      replica_set: "rs01"
+      poll: 10
+      interval: 10
+    when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or
+          not mongodb_replication_enabled

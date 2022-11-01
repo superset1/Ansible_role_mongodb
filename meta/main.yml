@@ -3,6 +3,7 @@
 galaxy_info:
   role_name: mongodb
   author: Vitaly Kargin
+  namespace: superset1
   company: WB
   description: Manage MongoDB with authentication and replica sets
 
@@ -32,7 +33,7 @@ galaxy_info:
     - mongodb
     - database
     - nosql
-    - node-exporter
+    - nodeexporter
     - vault
 
 dependencies: []

@@ -3,19 +3,21 @@
 - name: Systemd Daemon Reload
   systemd:
     daemon_reload: yes
-  when: mongodb_manage_systemd_unit | bool
+  when: ansible_service_mgr == "systemd"
 
 - name: Restart Mongodb Systemd Service
   systemd:
     name: "{{ mongodb_daemon_name }}"
     state: restarted
-  when: mongodb_manage_systemd_unit | bool
+    enabled: true
+  when: ansible_service_mgr == "systemd"
 
-# - name: Restart Mongodb Service
-#   service:
-#     name: "{{ mongodb_daemon_name }}"
-#     state: restarted
-#   when: mongodb_manage_service | bool
+- name: Restart Mongodb Service
+  service:
+    name: "{{ mongodb_daemon_name }}"
+    state: restarted
+    enabled: true
+  when: ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
 
 - name: Wait when Mongodb is Started
   wait_for:
@@ -29,11 +31,10 @@
   service:
     name: mongodb-mms-monitoring-agent
     state: restarted
-  when: mongodb_manage_service | bool
 
 - name: Restart Mongodb-Exporter
   systemd:
     name: mongodb-exporter
     daemon_reload: true
     state: restarted
-  when: mongodb_manage_systemd_unit | bool
+  when: ansible_service_mgr == "systemd"

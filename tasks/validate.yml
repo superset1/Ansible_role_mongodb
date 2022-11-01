@@ -66,19 +66,22 @@
         not mongodb_replication_enabled
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
 
-- name: Register CPU AVX Flag
+- name: Register CPU AVX Flag if Used mongodb_version >= '5.0'
   shell: "set -o pipefail && grep -m 1 ^flags /proc/cpuinfo | grep -qw avx"
   args:
     executable: "/bin/bash"
   register: cpu_avx_flag_support
   changed_when: false
   ignore_errors: yes
+  when: mongodb_major_version is version("5.0", ">=")
   tags: [mongodb, mongodb-configure]
 
 - name: Check AVX Flag if Used mongodb_version >= '5.0'
+  any_errors_fatal: true
   assert:
     that:
-      - (mongodb_major_version is version("5.0", ">=") and cpu_avx_flag_support.rc == 0) or (mongodb_major_version is version("5.0", "<"))
+      - cpu_avx_flag_support.rc == 0
     fail_msg: 'AVX cpu extension must be enabled for mongodb_version >= "5.0"!'
     quiet: true
+  when: mongodb_major_version is version("5.0", ">=")
   tags: [mongodb, mongodb-install, mongodb-configure]
