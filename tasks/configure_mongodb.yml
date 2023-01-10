@@ -1,27 +1,15 @@
 ---
-- name: Create Mongodb Group
+- name: Create MongoDB Group
   group:
-    name: "{{ mongodb_user }}"
-    gid: "{{ mongodb_gid }}"
+    name: "{{ mongodb_group }}"
     state: present
   tags: [mongodb, mongodb-configure]
 
-- name: Create Mongodb User
+- name: Create MongoDB User
   user:
     name: "{{ mongodb_user }}"
-    group: "{{ mongodb_user }}"
-    uid: "{{ mongodb_uid }}"
+    group: "{{ mongodb_group }}"
     state: present
-  tags: [mongodb, mongodb-configure]
-
-- name: Create KeyFile
-  copy:
-    dest: "{{ mongodb_security_keyfile }}"
-    content: "{{ mongodb_keyfile_content }}"
-    owner: "{{ mongodb_user }}"
-    group: "root"
-    mode: 0400
-  when: mongodb_replication_enabled
   tags: [mongodb, mongodb-configure]
 
 - name: Create Log Directory if Missing
@@ -29,7 +17,7 @@
     state: directory
     dest: "{{ mongodb_systemlog_path|dirname }}"
     owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
     mode: 0755
   when: mongodb_systemlog_destination == "file"
   tags: [mongodb, mongodb-configure]
@@ -45,7 +33,7 @@
     state: touch
     dest: "{{ mongodb_systemlog_path }}"
     owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
     mode: 0644
   when: ( mongodb_systemlog_destination == "file"
         and logfile_stat is defined
@@ -57,38 +45,62 @@
     path: "{{ mongodb_storage_dbpath }}"
     state: directory
     owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
     setype: 'mongod_var_lib_t'
     recurse: true
     follow: true
   tags: [mongodb, mongodb-configure]
 
-- name: Configure Mongodb
+- name: Create MongoDB KeyFile
+  copy:
+    dest: "{{ mongodb_security_keyfile_path }}"
+    content: "{{ mongodb_keyfile_content }}"
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
+    mode: 0400
+  notify:
+    - Restart MongoDB Systemd Service
+    - Restart MongoDB Service
+    - Wait When MongoDB is Started
+  when: mongodb_replication_enabled
+  tags: [mongodb, mongodb-configure]
+
+- name: Configure MongoDB Logrotate
+  template:
+    src: mongodb.logrotate.j2
+    dest: /etc/logrotate.d/{{ mongodb_daemon_name }}
+    owner: "root"
+    group: "root"
+    mode: 0644
+  when: mongodb_systemlog_destination == 'file'
+  tags: [mongodb, mongodb-configure, mongodb-logrotate]
+
+- name: Configure MongoDB
   template:
     src: mongod.conf.j2
     dest: /etc/mongod.conf
     backup: true
-    owner: root
-    group: root
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
     mode: 0644
   notify:
-    - Restart Mongodb Systemd Service
-    - Restart Mongodb Service
-    - Wait when Mongodb is Started
+    - Restart MongoDB Systemd Service
+    - Restart MongoDB Service
+    - Wait When MongoDB is Started
   tags: [mongodb, mongodb-configure]
 
-- name: Add Systemd Configuration if Present
+- name: Add MongoDB Systemd Configuration if Present
   template:
     src: mongodb.service.j2
     dest: "/lib/systemd/system/{{ mongodb_daemon_name }}.service"
     owner: root
     group: root
     mode: '0644'
-  when: ansible_service_mgr == "systemd"
   notify:
     - Systemd Daemon Reload
-    - Restart Mongodb Systemd Service
-    - Wait when Mongodb is Started
+    - Restart MongoDB Systemd Service
+    - Wait When MongoDB is Started
+  when: ansible_service_mgr == "systemd"
   tags: [mongodb, mongodb-configure]
 
 - name: Flush All Handlers at This Point

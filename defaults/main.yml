@@ -2,8 +2,8 @@
 
 ## Main options
 ansible_user: root
-mongodb_package: mongodb-org
-mongodb_package_state: present
+mongodb_package: "mongodb-org"
+mongodb_package_state: "present"
 mongodb_version: "4.4"
 
 mongodb_pymongo_from_pip: true                   # Install latest PyMongo via PIP or package manager
@@ -22,10 +22,9 @@ mongodb_use_numa: false
 mongodb_login_database: "admin"
 
 mongodb_user: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
-mongodb_uid:
-mongodb_gid:
+mongodb_group: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
 mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
-
+  
 ## Net options
 mongodb_net_bindip: 0.0.0.0                      # Comma separated list of ip addresses to listen on
 mongodb_net_http_enabled: false                  # Enable http interface
@@ -43,9 +42,10 @@ mongodb_processmanagement_fork: "{{ 'RedHat' == ansible_os_family }}"
 
 ## Security options
 # Disable or enable security. Possible values: 'disabled', 'enabled'
-mongodb_security_authorization: "enabled"
-mongodb_security_keyfile: /etc/mongodb-keyfile   # Specify path to keyfile with password for inter-process authentication
+mongodb_security_authorization_enabled: true
 mongodb_security_javascript_enabled: false
+mongodb_security_keyfile_path: /etc/mongodb-keyfile       # Specify path to keyfile with password for inter-process authentication
+mongodb_keyfile_content: ""                      # Please generate this file on production environment with command 'openssl rand -base64 756'
 
 ## Storage options
 mongodb_storage_dbpath: /data/db                 # Directory for datafiles
@@ -70,6 +70,17 @@ mongodb_systemlog_destination: "file"
 mongodb_systemlog_logappend: true                                        # Append to logpath instead of over-writing
 mongodb_systemlog_logrotate: "rename"                                    # Logrotation behavior
 mongodb_systemlog_path: /var/log/mongodb/{{ mongodb_daemon_name }}.log   # Log file to send write to instead of stdout
+mongodb_systemlog_logrotate_config:
+  period: daily
+  size: 1G
+  rotate: 5
+  create: true
+  missingok: true
+  compress: true
+  delaycompress: true
+  notifempty: true
+  sharedscripts: true
+  postrotate: /bin/kill -SIGUSR1 $(pidof {{ mongodb_daemon_name }}) && rm -f {{ mongodb_systemlog_path }}.20*
 
 ## Operation Profiling options
 mongodb_operation_profiling_slow_op_threshold_ms: 100
@@ -78,21 +89,68 @@ mongodb_operation_profiling_mode: "off"
 ## Cloud options (MongoDB >= 4.0)
 mongodb_cloud_monitoring_free_state: "runtime"
 
+## MongoDB Standalone options
+mongodb_standalone_host_group: "mongo_standalone"
+
 ## Replication options
-mongodb_replication_enabled: false                                                  # Enable replication
-mongodb_replication_replset: "{{ 'rs01' if mongodb_replication_enabled else '' }}"  # Default name of replicaset
-mongodb_replication_replindexprefetch: "all"                                        # Specify index prefetching behavior (if secondary) [none|_id_only|all]
-mongodb_replication_oplogsize: 1024                                                 # Specifies a maximum size in megabytes for the replication operation log
-mongodb_replication_reconfigure: false                                              # Reconfigure replicaset for add or delete members
+mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharding_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"  # Enable replication
+mongodb_replication_host_group: "mongo_cluster"
+mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharding_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
+mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
+mongodb_replication_oplogsize: 1024                                                     # Specifies a maximum size in megabytes for the replication operation log
+mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
+
+## Sharding options
+mongodb_sharding_state: "present"
+mongodb_sharding_host_group: "mongo_shard_"
+
+## Mongocfg options
+mongodb_config_host_group: "mongocfg_servers"
+mongodb_config_replication_replset_name: "cfg"
+
+## Mongos options
+mongos_host_group: "mongos_servers"
+mongos_daemon_name: "mongos"
+mongos_package: "mongodb-org-mongos"
+mongos_package_state: "present"
+
+mongos_user: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
+mongos_group: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
+
+mongos_systemlog_destination: "file"
+mongos_systemlog_logappend: true
+mongos_systemlog_logrotate: "rename"
+mongos_systemlog_path: "/var/log/mongodb/mongos.log"
+mongos_systemlog_logrotate_config:
+  period: daily
+  size: 1G
+  rotate: 5
+  create: true
+  missingok: true
+  compress: true
+  delaycompress: true
+  notifempty: true
+  sharedscripts: true
+  postrotate: /bin/kill -SIGUSR1 $(pidof {{ mongos_daemon_name }}) && rm -f {{ mongos_systemlog_path }}.20*
+
+mongos_systemd_unit_limit_nofile: 64000
+mongos_systemd_unit_limit_nproc: 64000
+
+mongos_net_port: 27017                                   # Specify port number
+mongos_net_bindip: 0.0.0.0                               # Comma separated list of ip addresses to listen on
+mongos_net_bind_ip_all: false
+mongos_net_tls_enabled: false
+mongos_net_compressors: null
+mongos_certificate_key_file: ""
+mongos_certificate_ca_file: ""
+mongos_security_keyfile_path: "{{ mongodb_security_keyfile_path }}"        # Specify path to keyfile with password for inter-process authentication
+mongos_keyfile_content: "{{ mongodb_keyfile_content }}"  # Please generate this file on production environment with command 'openssl rand -base64 756'
 
 # MMS Agent
 mongodb_mms_agent_pkg: https://cloud.mongodb.com/download/agent/monitoring/mongodb-mms-monitoring-agent_7.2.0.488-1_amd64.ubuntu1604.deb
 mongodb_mms_group_id: ""
 mongodb_mms_api_key: ""
 mongodb_mms_base_url: https://mms.mongodb.com
-
-# Please generate this file on production environment with command 'openssl rand -base64 756'
-mongodb_keyfile_content: ""
 
 # Names and passwords for administrative users
 mongodb_user_admin_name: "mongoadm"
@@ -129,5 +187,11 @@ mongodb_config:
 
 # MongoDB prometheus exporter
 mongodb_exporter_user: "mongodb-exporter"
+mongodb_exporter_group: "{{ mongodb_exporter_user }}"
 mongodb_exporter_enabled: "true"
-mongodb_exporter_version: "0.11.2"
+mongodb_exporter_version: "{{ '0.30.0' if mongodb_sharding_enabled else '0.11.2' }}"
+mongodb_exporter_link: "https://github.com/percona/mongodb_exporter/releases/download/v{{ mongodb_exporter_version }}/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"
+mongodb_exporter_path: "/usr/local/bin/mongodb-exporter"
+mongodb_exporter_checksum_link: "https://github.com/percona/mongodb_exporter/releases/download/v{{ mongodb_exporter_version }}/mongodb_exporter_{{ mongodb_exporter_version }}_checksums.txt"
+mongodb_exporter_checksum_path: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter_v{{ mongodb_exporter_version }}_SHA256SUMS"
+mongodb_exporter_temp_dir: "/tmp/mongodb_exporter"

@@ -10,6 +10,7 @@ mongodb_repository_gpgkey:
   "4.0": "https://www.mongodb.org/static/pgp/server-4.0.asc"
   "3.6": "https://www.mongodb.org/static/pgp/server-3.6.asc"
 
-mongodb_pidfile_path: "{{ '/var/run/mongodb/mongod.pid' if ('mongodb-org' in mongodb_package) else '' }}"
+mongodb_pidfile_path: "{{ '/run/mongodb/mongod.pid' if ('mongodb-org' in mongodb_package) else '' }}"
+mongos_pidfile_path: "{{ '/run/mongodb/mongos.pid' if ('mongodb-org-mongos' in mongos_package) else '' }}"
 
 yum_lock_timeout: 180

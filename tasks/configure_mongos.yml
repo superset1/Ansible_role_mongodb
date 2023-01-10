@@ -1,0 +1,106 @@
+---
+- name: Create Mongos Group
+  group:
+    name: "{{ mongos_group }}"
+    state: present
+  tags: [mongos, mongos-configure]
+
+- name: Create Mongos User
+  user:
+    name: "{{ mongos_user }}"
+    group: "{{ mongos_group }}"
+    state: present
+  tags: [mongos, mongos-configure]
+
+- name: Create Log Directory if Missing
+  file:
+    state: directory
+    dest: "{{ mongos_systemlog_path|dirname }}"
+    owner: "{{ mongos_user }}"
+    group: "{{ mongos_group }}"
+    mode: 0755
+  when: mongos_systemlog_destination == "file"
+  tags: [mongos, mongos-configure]
+
+- name: Check That Logfile Exists
+  stat: path={{ mongos_systemlog_path }}
+  register: logfile_stat
+  when: mongos_systemlog_destination == "file"
+  tags: [mongos, mongos-configure]
+
+- name: Create Logfile if Missing
+  file:
+    state: touch
+    dest: "{{ mongos_systemlog_path }}"
+    owner: "{{ mongos_user }}"
+    group: "{{ mongos_group }}"
+    mode: 0644
+  when: ( mongos_systemlog_destination == "file"
+        and logfile_stat is defined
+        and not logfile_stat.stat.exists )
+  tags: [mongos, mongos-configure]
+
+- name: Create Mongos KeyFile
+  copy:
+    dest: "{{ mongos_security_keyfile_path }}"
+    content: "{{ mongos_keyfile_content }}"
+    owner: "{{ mongos_user }}"
+    group: "{{ mongos_group }}"
+    mode: 0400
+  notify:
+    - Restart Mongos Systemd Service
+    - Restart Mongos Service
+    - Wait When Mongos is Started
+  when: mongodb_main_group == mongos_host_group
+  tags: [mongos, mongos-configure]
+
+- name: Configure Mongos Logrotate
+  template:
+    src: mongos.logrotate.j2
+    dest: /etc/logrotate.d/{{ mongos_daemon_name }}
+    owner: "root"
+    group: "root"
+    mode: 0644
+  when: mongos_systemlog_destination == 'file'
+  tags: [mongos, mongos-configure, mongos-logrotate]
+
+- name: Configure Mongos
+  template:
+    src: mongos.conf.j2
+    dest: /etc/mongos.conf
+    backup: true
+    owner: "{{ mongos_user }}"
+    group: "{{ mongos_group }}"
+    mode: 0644
+  notify:
+    - Restart Mongos Systemd Service
+    - Restart Mongos Service
+    - Wait When Mongos is Started
+  tags: [mongos, mongos-configure]
+
+- name: Add Mongos Systemd Configuration if Present
+  template:
+    src: mongos.service.j2
+    dest: "/lib/systemd/system/{{ mongos_daemon_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Systemd Daemon Reload
+    - Restart Mongos Systemd Service
+    - Wait When Mongos is Started
+  when: ansible_service_mgr == "systemd"
+  tags: [mongos, mongos-configure]
+
+- name: Ensure Mongos Service Pre Start Script Exists
+  template:
+    src: mongos_pre.sh.j2
+    dest: /usr/local/bin/mongos_pre.sh
+    owner: "{{ mongos_user }}"
+    group: "{{ mongos_group }}"
+    mode: 0755
+  tags: [mongos, mongos-configure]
+
+- name: Flush All Handlers at This Point
+  meta: flush_handlers
+  tags: [mongos, mongos-configure]

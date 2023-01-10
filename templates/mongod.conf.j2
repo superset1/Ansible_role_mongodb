@@ -31,7 +31,7 @@ processManagement:
   {% endfor %}
   {% endif %}
 
-{% if mongodb_replication_replset -%}
+{% if mongodb_replication_enabled -%}
 replication:
   oplogSizeMB: {{ mongodb_replication_oplogsize | int }}
   replSetName: {{ mongodb_replication_replset }}
@@ -46,9 +46,9 @@ replication:
 {% endif %}
 
 security:
-  authorization: {{ mongodb_security_authorization }}
-  {% if mongodb_replication_replset and mongodb_security_authorization == 'enabled' -%}
-  keyFile: {{ mongodb_security_keyfile }}
+  authorization: {{ 'enabled' if mongodb_security_authorization_enabled else 'disabled' }}
+  {% if mongodb_replication_enabled and mongodb_security_authorization_enabled -%}
+  keyFile: {{ mongodb_security_keyfile_path }}
   {% endif -%}
   javascriptEnabled: {{ mongodb_security_javascript_enabled | to_nice_json }}
   {%- if mongodb_config['security'] is defined and mongodb_config['security'] is iterable %}
@@ -123,4 +123,9 @@ setParameter:
   {% for key, value in mongodb_set_parameters.items() -%}
   {{ key }}: {{ value }}
   {% endfor %}
+{% endif %}
+
+{% if mongodb_sharding_enabled -%}
+sharding:
+  clusterRole: {{ mongodb_sharding_role }}
 {% endif %}

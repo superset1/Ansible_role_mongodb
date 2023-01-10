@@ -1,0 +1,35 @@
+{{ mongos_systemlog_path }}
+{
+  {% if mongos_systemlog_logrotate_config.period is defined and mongos_systemlog_logrotate_config.period -%}
+  {{ mongos_systemlog_logrotate_config.period }}
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.size is defined and mongos_systemlog_logrotate_config.size -%}
+  size {{ mongos_systemlog_logrotate_config.size }}
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.rotate is defined and mongos_systemlog_logrotate_config.rotate -%}
+  rotate {{ mongos_systemlog_logrotate_config.rotate }}
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.create is defined and mongos_systemlog_logrotate_config.create -%}
+  create 640 {{ mongos_user }} {{ mongos_group }}
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.missingok is defined and mongos_systemlog_logrotate_config.missingok -%}
+  missingok
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.compress is defined and mongos_systemlog_logrotate_config.compress -%}
+  compress
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.delaycompress is defined and mongos_systemlog_logrotate_config.delaycompress -%}
+  delaycompress
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.notifempty is defined and mongos_systemlog_logrotate_config.notifempty -%}
+  notifempty
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.sharedscripts is defined and mongos_systemlog_logrotate_config.sharedscripts -%}
+  sharedscripts
+  {% endif -%}
+  {%- if mongos_systemlog_logrotate_config.postrotate is defined and mongos_systemlog_logrotate_config.postrotate -%}
+  postrotate
+    {{ mongos_systemlog_logrotate_config.postrotate }}
+  endscript
+  {%- endif +%}
+}

@@ -5,21 +5,21 @@
     daemon_reload: yes
   when: ansible_service_mgr == "systemd"
 
-- name: Restart Mongodb Systemd Service
+- name: Restart MongoDB Systemd Service
   systemd:
     name: "{{ mongodb_daemon_name }}"
     state: restarted
     enabled: true
   when: ansible_service_mgr == "systemd"
 
-- name: Restart Mongodb Service
+- name: Restart MongoDB Service
   service:
     name: "{{ mongodb_daemon_name }}"
     state: restarted
     enabled: true
   when: ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
 
-- name: Wait when Mongodb is Started
+- name: Wait When MongoDB is Started
   wait_for:
     host: "{{ item }}"
     port: "{{ mongodb_net_port }}"
@@ -27,12 +27,34 @@
     delay: 10
   with_items: "{{ mongodb_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
 
-- name: Restart Mongodb MMS Monitoring Agent
+- name: Restart Mongos Systemd Service
+  systemd:
+    name: "{{ mongos_daemon_name }}"
+    state: restarted
+    enabled: true
+  when: ansible_service_mgr == "systemd"
+
+- name: Restart Mongos Service
+  service:
+    name: "{{ mongos_daemon_name }}"
+    state: restarted
+    enabled: true
+  when: ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
+
+- name: Wait When Mongos is Started
+  wait_for:
+    host: "{{ item }}"
+    port: "{{ mongos_net_port }}"
+    timeout: 120
+    delay: 10
+  with_items: "{{ mongodb_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
+
+- name: Restart MongoDB MMS Monitoring Agent
   service:
     name: mongodb-mms-monitoring-agent
     state: restarted
 
-- name: Restart Mongodb-Exporter
+- name: Restart MongoDB-Exporter
   systemd:
     name: mongodb-exporter
     daemon_reload: true

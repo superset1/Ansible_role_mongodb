@@ -5,30 +5,52 @@
     msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for RedHat family"
   when:
     - mongodb_package == 'mongodb-org'
+    - mongos_package == 'mongodb-org-mongos'
     - mongodb_major_version is not regex("3.4|3.6|4.0|4.2|4.4|5.0|6.0")
     - ansible_os_family == 'RedHat'
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
   
 - name: Install EPEL Release Repository
   package:
     name: epel-release
     state: present
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Add YUM Repository
   template:
     src: mongodb.redhat.repo.j2
-    dest: /etc/yum.repos.d/{{ mongodb_package }}-{{ mongodb_major_version }}.repo
+    dest: /etc/yum.repos.d/mongodb-{{ mongodb_version }}.repo
     mode: 0644
-  when: mongodb_package == 'mongodb-org'
-  tags: [mongodb, mongodb-install]
+  register: _apt
+  until: _apt is succeeded
+  retries: 5
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongos_package == 'mongodb-org-mongos'
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install MongoDB Package
   yum:
     name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
     state: "{{ mongodb_package_state }}"
     lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-install]
+
+- name: Install Mongos Package
+  yum:
+    name: "{{ mongos_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    state: "{{ mongos_package_state }}"
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_main_group == mongos_host_group
+  tags: [mongos, mongos-install]
+
+- name: Install Mongosh
+  yum:
+    name: mongodb-mongosh
+    state: present
+    lock_timeout: "{{ yum_lock_timeout }}"
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install Numactl Package
   yum:
@@ -36,7 +58,7 @@
     state: present
     lock_timeout: "{{ yum_lock_timeout }}"
   when: mongodb_use_numa
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install PyMongo Package
   yum:
@@ -44,7 +66,7 @@
     state: present
     lock_timeout: "{{ yum_lock_timeout }}"
   when: not mongodb_pymongo_from_pip
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install PIP
   yum:
@@ -53,7 +75,7 @@
       - python3-devel
     lock_timeout: "{{ yum_lock_timeout }}"
   when: mongodb_pymongo_from_pip
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install Setuptools (required for ansible 2.7+)
   yum:
@@ -61,7 +83,7 @@
       - python3-setuptools
     lock_timeout: "{{ yum_lock_timeout }}"
   when: mongodb_pymongo_from_pip
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install PyMongo from PIP
   pip:
@@ -69,4 +91,4 @@
     state: "{{ mongodb_pymongo_pip_version is defined | ternary('present', 'latest') }}"
     version: "{{ mongodb_pymongo_pip_version | default(omit) }}"
   when: mongodb_pymongo_from_pip
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]

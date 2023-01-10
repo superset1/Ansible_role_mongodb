@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+
+systemLog:
+  destination: {{ mongos_systemlog_destination }}
+{% if mongos_systemlog_destination == 'file' %}
+  logAppend: {{ mongos_systemlog_logappend | to_nice_json }}
+  logRotate: {{ mongos_systemlog_logrotate }}
+  path: {{ mongos_systemlog_path }}
+{% endif %}
+
+net:
+{% if mongos_net_bind_ip_all %}
+  bindIpAll: true
+{% else %}
+  bindIp: {{ mongos_net_bindip }}
+{% endif %}
+  port: {{ mongos_net_port }}
+{% if mongos_net_compressors %}
+  compression:
+    compressors: {{ mongos_net_compressors }}
+{% endif %}
+{% if mongos_net_tls_enabled %}
+  tls:
+    mode: requireTLS
+    certificateKeyFile: {{ mongos_certificate_key_file }}
+    CAFile: {{ mongos_certificate_ca_file }}
+{% endif %}
+
+sharding:
+  configDB: "cfg/{{ groups[mongodb_config_host_group] | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
+  
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+
+security:
+  keyFile: {{ mongos_security_keyfile_path }}

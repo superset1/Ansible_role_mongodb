@@ -1,10 +1,15 @@
 ---
 
-- name: Set ansible_distribution_release to Buster (Debian 10) when Bullseye (Debian 11)
+- name: Set ansible_distribution_release to Buster (Debian 10) When Bullseye (Debian 11)
   set_fact:
     ansible_distribution_release: "buster"
   when: ansible_distribution_release == "bullseye"
-  tags: [mongodb, mongodb-install, mongodb-uninstall]
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
+
+- name: Set Main Group For Hosts
+  set_fact:
+    mongodb_main_group: "{{ group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first }}"
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongos-configure, mongos-logrotate, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongos-mms, mongodb-exporter, mongos-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongos-uninstall-exporter, mongodb-dbdelete]
 
 - name: Include OS-specific Variables
   include_vars: "{{ item }}"
@@ -12,39 +17,54 @@
     - "{{ ansible_distribution_release }}.yml"
     - "{{ ansible_distribution }}.yml"
     - "{{ ansible_os_family }}.yml"
-  tags: [mongodb, mongodb-install, mongodb-uninstall]
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
+
+- name: Set mongodb_master When mongodb_replication_enabled ans Master is not Set in the Hosts File
+  set_fact: 
+    mongodb_master: true
+  with_items:
+    - "{{ mongodb_main_group }}"
+  when:
+    - mongodb_replication_enabled
+    - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_master', 'defined')
+    - inventory_hostname == groups[mongodb_main_group][0]
+    - mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
 - name: Include Validation Tasks
   include_tasks: "validate.yml"
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongodb-exporter]
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-exporter, mongos-exporter]
 
-- name: Include Mongo and Mongodb-Exporter Remove Tasks
+- name: Include Mongo and MongoDB-Exporter Remove Tasks
   include_tasks: "{{ item }}"
   with_first_found:
     - "uninstall.{{ ansible_distribution_release | lower }}.yml"
     - "uninstall.{{ ansible_distribution | lower }}.yml"
     - "uninstall.{{ ansible_os_family | lower }}.yml"
-  tags: [never, mongodb-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
+  tags: [never, mongodb-uninstall, mongodb-uninstall-exporter, mongos-uninstall, mongos-uninstall-exporter, mongodb-dbdelete]
 
 - name: Include Installation Tasks
   include_tasks: "{{ item }}"
   with_first_found:
     - "install.{{ ansible_distribution | lower }}.yml"
     - "install.{{ ansible_os_family | lower }}.yml"
-  tags: [mongodb, mongodb-install]
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Include Configuration Tasks
+- name: Include MongoDB Configuration Tasks
   include_tasks: configure_mongodb.yml
-  tags: [mongodb, mongodb-configure]
+  when: mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-configure, mongodb-logrotate]
 
 - name: Set Index of Arbiter in Hosts File
   set_fact: 
-    mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
+    mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
+  with_items:
+    - "{{ mongodb_main_group }}"
   when:
     - mongodb_replication_enabled
-    - (hostvars|dictsort|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] is defined
-    - (hostvars|dictsort|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0]
-  tags: [mongodb, mongodb-replicaset]
+    - hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
+    - mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
 - name: Include Replication Tasks for Master
   include_tasks: create_replicaset.yml
@@ -52,21 +72,38 @@
     - mongodb_replication_enabled
     - mongodb_master is defined
     - mongodb_master
+    - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-replicaset]
 
 - name: Include Users Creation Tasks {{ 'for Master' if mongodb_replication_enabled else '' }}
   include_tasks: create_users.yml
-  when: (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or
-        not mongodb_replication_enabled
-  # no_log: true
+  when:
+    - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
+    - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+
+- name: Include Mongos Configuration Tasks
+  include_tasks: configure_mongos.yml
+  when: 
+    - mongodb_main_group == mongos_host_group
+    - mongodb_sharding_enabled
+  tags: [mongos, mongos-configure, mongos-logrotate]
+
+- name: Include Mongos Sharding Configuration Tasks
+  include_tasks: configure_sharding.yml
+  when: 
+    - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
+    - mongodb_sharding_enabled
+  tags: [mongos, mongos-sharding]
 
 - name: Include MMS Agent Configuration
   include_tasks: mms-agent.yml
-  when: mongodb_mms_api_key | length > 0
-  tags: [mongodb, mongodb-mms]
+  when: 
+    - mongodb_mms_api_key | length > 0
+  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
 
 - name: Include Node-Exporter Installation Tasks
   include_tasks: mongodb-exporter.yaml
-  when: mongodb_exporter_enabled == 'true'
-  tags: [mongodb, mongodb-exporter]
+  when: 
+    - mongodb_exporter_enabled == 'true'
+  tags: [mongodb, mongos, mongodb-exporter, mongos-exporter]

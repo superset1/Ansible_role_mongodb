@@ -6,7 +6,7 @@
       - (mongodb_net_ssl_enabled and mongodb_major_version is version("4.2", "<")) or (not mongodb_net_ssl_enabled)
     fail_msg: 'MongoDB 4.2 deprecates ssl options in favor of tls options with identical functionality!'
     quiet: true
-  tags: [mongodb, mongodb-configure]
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 
 - name: Check Value of Variable mongodb_net_ssl_mode if mongodb_net_ssl_enabled is True
   assert:
@@ -14,31 +14,63 @@
       - (mongodb_net_ssl_enabled and mongodb_net_ssl_mode is regex("requireSSL|preferSSL|preferSSL")) or (not mongodb_net_ssl_enabled)
     fail_msg: 'Set mongodb_net_ssl_mode to (requireSSL/preferSSL/allowSSL) or set mongodb_net_ssl_mode to False!'
     quiet: true
-  tags: [mongodb, mongodb-configure]
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 
-- name: Check that Group mongo_cluster is Exist
+- name: Check the Group {{ mongodb_standalone_host_group }} Exists if Standalone MongoDB
   assert:
     that:
-      - (mongodb_replication_enabled and groups.mongo_cluster is defined) or (not mongodb_replication_enabled)
-    fail_msg: 'Create mongo_cluster group in hosts file and add your servers to it!'
+      - groups[mongodb_standalone_host_group] is defined
+    fail_msg: "Create {{ mongodb_standalone_host_group }} group in hosts file and add your servers to it!"
     quiet: true
+  when: 
+    - not mongodb_replication_enabled
+    - not mongodb_sharding_enabled
   tags: [mongodb, mongodb-configure]
+
+- name: Check the Group {{ mongodb_replication_host_group }} Exists if Replicaset
+  assert:
+    that:
+      - groups[mongodb_replication_host_group] is defined
+    fail_msg: "Create {{ mongodb_replication_host_group }} group in hosts file and add your servers to it!"
+    quiet: true
+  when: 
+    - mongodb_replication_enabled
+    - not mongodb_sharding_enabled
+    - mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-configure]
+
+- name: Check the Groups '{{ mongodb_sharding_host_group }}[0-9]+' and {{ mongodb_config_host_group }} and {{ mongos_host_group }} Exists if Sharded Cluster
+  assert:
+    that:
+      - mongodb_main_group|regex_replace('[0-9]+$','') in mongodb_valid_groups
+    fail_msg: "Create '{{ mongodb_sharding_host_group }}[0-9]+' and {{ mongodb_config_host_group }} and {{ mongos_host_group }} groups in hosts file and add your servers to it!"
+    quiet: true
+  when: 
+    - mongodb_sharding_enabled
+  tags: [mongos, mongos-configure, mongos-sharding]
 
 - name: Check Value of Variable mongodb_master if mongodb_replication_enabled is True
   assert:
     that:
-      - (mongodb_replication_enabled and hostvars|dictsort|selectattr('1.mongodb_master', 'defined')|map(attribute='1.mongodb_master')|list) or (not mongodb_replication_enabled)
+      - "{{ hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')|map(attribute='1.mongodb_master')|list }}"
     fail_msg: 'Set mongodb_master to True next to the master server or set mongodb_replication_enabled to False in hosts file!'
     quiet: true
-  tags: [mongodb, mongodb-configure]
+  when: 
+    - mongodb_replication_enabled
+    - mongodb_main_group != mongos_host_group
+    - mongodb_main_group != 'ungrouped'
+  tags: [mongodb, mongodb-configure, mongos-sharding]
 
 - name: Check Value of Variable mongodb_keyfile_content if mongodb_replication_enabled is True
   assert:
     that:
-      - (mongodb_replication_enabled and mongodb_keyfile_content | length > 0) or (not mongodb_replication_enabled)
+      - mongodb_keyfile_content | length > 0
     fail_msg: 'Set mongodb_keyfile_content or mongodb_replication_enabled to False!'
     quiet: true
-  tags: [mongodb, mongodb-configure]
+  when: 
+    - mongodb_replication_enabled or mongodb_main_group == mongos_host_group
+    - mongodb_main_group != 'ungrouped'
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 
 - name: Check that Admins Passwords are Not Empty
   assert:
@@ -48,9 +80,11 @@
       - mongodb_root_backup_password | length > 0
       - "{% if mongodb_exporter_enabled %}mongodb_exporter_password | length > 0{% endif %}"
     quiet: true
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
-  
-- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exist in the Replicaset
+  when: 
+    - mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter, mongos-exporter]
+
+- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Replicaset
   community.mongodb.mongodb_status:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
@@ -59,6 +93,7 @@
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ mongodb_replication_replset }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+    validate: votes
     poll: 2
     interval: 1
   ignore_errors: yes
@@ -67,9 +102,11 @@
     - mongodb_replication_enabled
     - mongodb_master is defined
     - mongodb_master
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
+    - mongodb_main_group != mongos_host_group
+    - mongodb_main_group != 'ungrouped'
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter, mongos-exporter]
 
-- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exist in the Single Database
+- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Standalone Database
   community.mongodb.mongodb_info:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
@@ -80,14 +117,18 @@
   async: 3
   poll: 2
   ignore_errors: yes
-  register: mongodb_root_admin_exist_single
-  when: not mongodb_replication_enabled
+  register: mongodb_root_admin_exist_standalone
+  when: 
+    - not mongodb_replication_enabled
+    - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-create-admin-users, mongodb-exporter]
 
 - name: Set Results of Root User Existence Check
   set_fact: 
-    mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_single | default({}))  }}"
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter]
+    mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_standalone | default({}))  }}"
+  when: 
+    - mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter, mongos-sharding]
   
 - name: Register CPU AVX Flag if Used mongodb_version >= '5.0'
   shell: "set -o pipefail && grep -m 1 ^flags /proc/cpuinfo | grep -qw avx"
@@ -97,7 +138,7 @@
   changed_when: false
   ignore_errors: yes
   when: mongodb_major_version is version("5.0", ">=")
-  tags: [mongodb, mongodb-configure]
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 
 - name: Check AVX Flag if Used mongodb_version >= '5.0'
   any_errors_fatal: true
@@ -107,4 +148,4 @@
     fail_msg: 'AVX cpu extension must be enabled for mongodb_version >= "5.0"!'
     quiet: true
   when: mongodb_major_version is version("5.0", ">=")
-  tags: [mongodb, mongodb-install, mongodb-configure]
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongos-configure, mongos-sharding]

@@ -1,7 +1,8 @@
 ---
-# Role: Mongodb v1.2.1
+# Role: MongoDB v1.3.0
 
-- name: Mongodb Role
-  hosts: mongo_cluster
+- name: MongoDB Role
+  hosts: all
+  any_errors_fatal: true
   roles:
     - mongodb

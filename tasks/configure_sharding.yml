@@ -1,0 +1,31 @@
+---
+
+- name: Gathering Shard Names
+  delegate_to: localhost
+  set_fact:
+    shard_names: "{{ shard_names|default({}) | combine( { item.replicaset_name: groups[item.group_name] | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string } ) }}" 
+  with_items:
+    - replicaset_name: "{{ mongodb_replication_replset }}"
+      group_name: "{{ mongodb_main_group }}"
+  when:
+    - mongodb_sharding_host_group in mongodb_main_group
+  tags: [mongos, mongos-sharding]
+
+- name: Set Shard Names for Mongos
+  set_fact:
+    shard_names: "{{ shard_names|default({}) | combine(hostvars|dictsort|selectattr('1.shard_names', 'defined')|map(attribute='1.shard_names')) }}"
+  when:
+    - mongodb_main_group == mongos_host_group
+  tags: [mongos, mongos-sharding]
+
+- name: Add a Replicaset Shard to Mongos
+  community.mongodb.mongodb_shard:
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
+    shard: "{{ item + '/' + shard_names[item] }}"
+    state: "{{ mongodb_sharding_state }}"
+    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+  with_items: "{{ shard_names }}"
+  when:
+    - mongodb_main_group == mongos_host_group
+  tags: [mongos, mongos-sharding]

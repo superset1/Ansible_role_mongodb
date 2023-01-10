@@ -33,6 +33,7 @@
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
+    validate: votes
     poll: 2
     interval: 1
   register: mongodb_root_admin_exist_replicaset
@@ -43,7 +44,7 @@
     - mongodb_master
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
-- name: Ensure that Root User '{{ mongodb_root_admin_name }}' Was Created in the Single Database
+- name: Ensure that Root User '{{ mongodb_root_admin_name }}' Was Created in the Standalone Database
   community.mongodb.mongodb_info:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
@@ -53,15 +54,31 @@
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   async: 3
   poll: 2
-  register: mongodb_root_admin_exist_single
+  register: mongodb_root_admin_exist_standalone
   changed_when: false
   when: not mongodb_replication_enabled
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
 - name: Set Results of Root User Existence Check
   set_fact: 
-    mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_single | default({}))  }}"
+    mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_standalone | default({}))  }}"
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+
+- name: Create Custom Backup Role 'backupCustom' When mongodb_version >= 6.0
+  community.mongodb.mongodb_shell:
+    login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
+    login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
+    login_host: "{{ groups[mongodb_main_group] | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
+    login_port: "{{ mongodb_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
+    db: "{{ mongodb_login_database }}"
+    eval: "db.getRole('backupCustom') || db.createRole({role: 'backupCustom', roles: ['backup'], privileges:[{ resource: { db: 'config', collection: 'system.preimages' }, actions: [ 'find' ] }]})"
+    mongo_cmd: "mongosh"
+    # idempotent: true # Not works correctly
+  register: _check_backupCustom_role_exists
+  changed_when: _check_backupCustom_role_exists.transformed_output.operationTime is defined
+  when: mongodb_major_version is version('6.0', '>=')
+  tags: [mongodb, mongodb-create-admin-users]
 
 - name: Create Administrative Users {{ 'in the Replicaset' if mongodb_replication_enabled else '' }}
   mongodb_user:
@@ -87,7 +104,7 @@
     - {
       name: "{{ mongodb_root_backup_name }}",
       password: "{{ mongodb_root_backup_password }}",
-      roles: "backup,clusterMonitor"
+      roles: "backup,clusterMonitor{{ ',backupCustom' if mongodb_major_version is version('6.0', '>=') else '' }}"
       }
   tags: [mongodb, mongodb-create-admin-users]
 

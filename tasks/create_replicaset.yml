@@ -1,6 +1,6 @@
 ---
 
-- name: Configure a Replicaset '{{ mongodb_replication_replset }}'
+- name: Configure a Replicaset
   any_errors_fatal: true
   community.mongodb.mongodb_replicaset:
     login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
@@ -8,15 +8,18 @@
     login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset }}"
+    replica_set: "{{ item.replicaset_name }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
     reconfigure: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary(mongodb_replication_reconfigure, false) }}"
     force: true
-    members: "{{ groups.mongo_cluster | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
-    arbiter_at_index: "{{ groups.mongo_cluster.index(mongodb_arbiter_index) if mongodb_arbiter_index is defined else omit }}"
+    members: "{{ groups[item.group_name] | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
+    arbiter_at_index: "{{ groups[item.group_name].index(mongodb_arbiter_index) if mongodb_arbiter_index is defined else omit }}"
+  with_items:
+    - replicaset_name: "{{ mongodb_replication_replset }}"
+      group_name: "{{ mongodb_main_group }}"
   tags: [mongodb, mongodb-replicaset]
 
-- name: Waiting for the Replicaset '{{ mongodb_replication_replset }}' to Stabilise
+- name: Waiting for the Replicaset to Stabilise
   any_errors_fatal: true
   community.mongodb.mongodb_status:
     login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
@@ -24,9 +27,11 @@
     login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset }}"
+    replica_set: "{{ item.replicaset_name }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
     poll: 10
     interval: 10
   register: mongodb_replicaset_status
+  with_items:
+    - replicaset_name: "{{ mongodb_replication_replset }}"
   tags: [mongodb, mongodb-replicaset]

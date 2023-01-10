@@ -1,7 +1,7 @@
 ---
 
 #----- MongoDB vars -----#
-mongodb_version: "4.4"
+mongodb_version: "6.0"
 mongodb_replication_enabled: true
 
 mongodb_root_admin_password: "mongoroot"

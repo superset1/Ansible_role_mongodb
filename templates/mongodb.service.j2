@@ -1,4 +1,5 @@
 # {{ ansible_managed }}
+
 [Unit]
 Description=MongoDB Database Server
 Documentation=https://docs.mongodb.org/manual
@@ -7,14 +8,14 @@ Wants=network-online.target
 
 [Service]
 User={{ mongodb_user }}
-Group={{ mongodb_user }}
+Group={{ mongodb_group }}
 {% if mongodb_use_numa %}
 ExecStart=/usr/bin/numactl --interleave=all /usr/bin/mongod --config /etc/mongod.conf
 {% else %}
 ExecStart=/usr/bin/mongod --config /etc/mongod.conf
 {% endif %}
 EnvironmentFile=-/etc/default/mongod
-PIDFile=/var/run/mongodb/mongod.pid
+PIDFile={{ mongodb_pidfile_path | default('/run/mongodb/mongod.pid') }}
 # file size
 LimitFSIZE=infinity
 # cpu time

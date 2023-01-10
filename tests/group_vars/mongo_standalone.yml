@@ -1,0 +1,25 @@
+---
+
+#----- MongoDB vars -----#
+mongodb_version: "4.4"
+mongodb_replication_enabled: true
+
+mongodb_root_admin_password: "mongoroot"
+mongodb_user_admin_password: "mongoadmin"
+mongodb_root_backup_password: "mongobackup"
+mongodb_exporter_password: "mongoexporter"
+
+mongodb_users: # If you want to add multiple regular users
+  - {
+    name: user1,
+    password: "password1",
+    roles: readWrite,
+    database: database1
+    }
+  - {
+    name: user2,
+    password: "password2",
+    roles: readWrite,
+    database: database2
+    }
+#----- MongoDB vars -----#

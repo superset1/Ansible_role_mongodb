@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=mongos
+After=syslog.target
+After=network.target
+
+[Service]
+User={{ mongos_user }}
+Group={{ mongos_group }}
+PIDFile={{ mongos_pidfile_path | default('/run/mongodb/mongos.pid') }}
+PermissionsStartOnly=true
+ExecStartPre=/usr/local/bin/mongos_pre.sh
+ExecStart=/usr/bin/mongos --quiet \
+    --config /etc/mongos.conf
+LimitFSIZE=infinity
+LimitCPU=infinity
+LimitAS=infinity
+LimitNOFILE={{ mongos_systemd_unit_limit_nofile }}
+LimitNPROC={{ mongos_systemd_unit_limit_nproc }}
+TasksAccounting=false
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

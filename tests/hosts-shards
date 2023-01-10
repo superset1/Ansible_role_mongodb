@@ -1,0 +1,25 @@
+[mongocfg_servers]
+mongocfg-1
+mongocfg-2
+mongocfg-3
+
+[mongos_servers]
+mongos-1
+mongos-2
+mongos-3
+
+[mongo_shard_01]
+mongoshard-1-1
+mongoshard-1-2
+mongoshard-1-3
+
+[mongo_shard_02]
+mongoshard-2-1
+mongoshard-2-2
+mongoshard-2-3 mongodb_arbiter=True # Optional variable if you need arbiter
+
+[mongo_sharding_cluster:children]
+mongocfg_servers
+mongos_servers
+mongo_shard_01
+mongo_shard_02

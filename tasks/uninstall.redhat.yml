@@ -1,110 +1,212 @@
 ---
-- name: Populate Service Facts
+- name: Gathering Service Facts
   service_facts:
-  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
-    
-- name: Stop Mongodb-Exporter Service if Exist
-  ignore_errors: true
-  systemd:
-    name: mongodb-exporter.service
-    state: stopped
-    enabled: false
-  when:
-    - ansible_service_mgr == "systemd"
-    - "'mongodb-exporter.service' in ansible_facts.services"
-  notify:
-    - Systemd Daemon Reload
-  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+  tags: [mongodb-uninstall, mongodb-uninstall-exporter, mongos-uninstall, mongos-uninstall-exporter]
 
-- name: Stop MongoDB Service if Exist
-  ignore_errors: true
-  systemd:
-    name: "{{ mongodb_daemon_name }}.service"
-    state: stopped
-    enabled: false
-  when:
-    - ansible_service_mgr == "systemd"
-    - "mongodb_daemon_name + '.service' in ansible_facts.services"
-  notify:
-    - Systemd Daemon Reload
-  tags: [mongodb-uninstall]
+- block:  
+  - name: Stop MongoDB-Exporter Service if Exist
+    ignore_errors: true
+    systemd:
+      name: mongodb-exporter.service
+      state: stopped
+      enabled: false
+    when:
+      - ansible_service_mgr == "systemd"
+      - "'mongodb-exporter.service' in ansible_facts.services"
+    notify:
+      - Systemd Daemon Reload
+    tags: [mongodb-uninstall, mongodb-uninstall-exporter]
 
-- name: Systemctl Reset Failed Services
-  command: systemctl reset-failed
-  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+  - name: Stop MongoDB Service if Exist
+    ignore_errors: true
+    systemd:
+      name: "{{ mongodb_daemon_name }}.service"
+      state: stopped
+      enabled: false
+    when:
+      - ansible_service_mgr == "systemd"
+      - "mongodb_daemon_name + '.service' in ansible_facts.services"
+    notify:
+      - Systemd Daemon Reload
+    tags: [mongodb-uninstall]
 
-- name: Uninstall MongoDB Package
-  yum:
-    name: "mongo*"
-    state: absent
+  - name: Systemctl Reset Failed Services
+    command: systemctl reset-failed
+    tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+
+  - name: Uninstall MongoDB Package
+    yum:
+      name: "*mongo*"
+      state: absent
     lock_timeout: "{{ yum_lock_timeout }}"
-  tags: [mongodb-uninstall]
+    tags: [mongodb-uninstall]
 
-- name: Uninstall Numactl Package
-  yum:
-    name: numactl
-    state: absent
+  - name: Uninstall Numactl Package
+    yum:
+      name: numactl
+      state: absent
     lock_timeout: "{{ yum_lock_timeout }}"
-  tags: [mongodb-uninstall]
+    tags: [mongodb-uninstall]
 
-- name: Delete Mongodb User
-  user:
-    name: "{{ mongodb_user }}"
-    group: "{{ mongodb_user }}"
-    uid: "{{ mongodb_uid }}"
-    state: absent
-    remove: yes
-    force: true
-  tags: [mongodb-uninstall]
+  - name: Delete MongoDB User
+    user:
+      name: "{{ mongodb_user }}"
+      group: "{{ mongodb_group }}"
+      state: absent
+      remove: yes
+      force: true
+    tags: [mongodb-uninstall]
 
-- name: Delete Mongodb-Exporter User
-  user:
-    name: "{{ mongodb_exporter_user }}"
-    state: absent
-    remove: yes
-    force: true
-  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+  - name: Delete MongoDB-Exporter User
+    user:
+      name: "{{ mongodb_exporter_user }}"
+      state: absent
+      remove: yes
+      force: true
+    tags: [mongodb-uninstall, mongodb-uninstall-exporter]
 
-- name: Find Mongodb-Exporter Config and Binary Files
-  find:
-    paths: 
-      - /lib/systemd/system
-      - /var
-      - /usr/bin
-      - /usr/local/bin
-      - /etc
-    patterns: "mongodb-exporter*"
-    file_type: any
-    recurse: yes
-  register: files_and_dir_to_delete
-  tags: [mongodb-uninstall-exporter]
+  - name: Find MongoDB-Exporter Config and Binary Files
+    find:
+      paths: 
+        - /lib/systemd/system
+        - /var
+        - /usr/bin
+        - /usr/local/bin
+        - /etc
+      patterns: "mongodb-exporter*"
+      file_type: any
+      recurse: yes
+    register: files_and_dir_to_delete
+    tags: [mongodb-uninstall-exporter]
 
-- name: Find MongoDB and Mongodb-Exporter Config and Binary Files
-  find:
-    paths: 
-      - /lib/systemd/system
-      - /var
-      - /usr/bin
-      - /usr/local/bin
-      - /etc
-    patterns: "mongo*"
-    file_type: any
-    recurse: yes
-  register: files_and_dir_to_delete
-  tags: [mongodb-uninstall]
+  - name: Find MongoDB and MongoDB-Exporter Config and Binary Files
+    find:
+      paths: 
+        - /lib/systemd/system
+        - /var
+        - /usr/bin
+        - /usr/local/bin
+        - /etc
+      patterns: "*mongo*"
+      file_type: any
+      recurse: yes
+    register: files_and_dir_to_delete
+    tags: [mongodb-uninstall]
 
-- name: Delete MongoDB Database
-  file:
-    path: "{{ mongodb_storage_dbpath }}"
-    state: absent
-  tags: [mongodb-dbdelete]
+  - name: Delete MongoDB Database
+    file:
+      path: "{{ mongodb_storage_dbpath }}"
+      state: absent
+    tags: [mongodb-dbdelete]
 
-- name: Delete Config and Binary Files
-  file:
-    path: "{{ files_and_dir_to_delete_item.path }}"
-    state: absent
-  with_items: "{{ files_and_dir_to_delete.files }}"
-  loop_control:
-    loop_var: files_and_dir_to_delete_item
-  become: yes
-  tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+  - name: Delete MongoDB Config and Binary Files
+    file:
+      path: "{{ files_and_dir_to_delete_item.path }}"
+      state: absent
+    with_items: "{{ files_and_dir_to_delete.files }}"
+    loop_control:
+      loop_var: files_and_dir_to_delete_item
+    become: yes
+    tags: [mongodb-uninstall, mongodb-uninstall-exporter]
+  when: mongodb_main_group != mongos_host_group
+
+- block:
+  - name: Stop Mongos-Exporter Service if Exist
+    ignore_errors: true
+    systemd:
+      name: mongodb-exporter.service
+      state: stopped
+      enabled: false
+    when:
+      - ansible_service_mgr == "systemd"
+      - "'mongodb-exporter.service' in ansible_facts.services"
+    notify:
+      - Systemd Daemon Reload
+    tags: [mongos-uninstall, mongos-uninstall-exporter]
+
+  - name: Stop Mongos Service if Exist
+    ignore_errors: true
+    systemd:
+      name: "{{ mongos_daemon_name }}.service"
+      state: stopped
+      enabled: false
+    when:
+      - ansible_service_mgr == "systemd"
+      - "mongos_daemon_name + '.service' in ansible_facts.services"
+    notify:
+      - Systemd Daemon Reload
+    tags: [mongos-uninstall]
+
+  - name: Systemctl Reset Failed Services
+    command: systemctl reset-failed
+    tags: [mongos-uninstall, mongos-uninstall-exporter]
+
+  - name: Uninstall Mongos Package
+    yum:
+      name: "*mongo*"
+      state: absent
+    lock_timeout: "{{ yum_lock_timeout }}"
+    tags: [mongos-uninstall]
+
+  - name: Uninstall Numactl Package
+    yum:
+      name: numactl
+      state: absent
+    lock_timeout: "{{ yum_lock_timeout }}"
+    tags: [mongos-uninstall]
+
+  - name: Delete MongoDB User
+    user:
+      name: "{{ mongodb_user }}"
+      group: "{{ mongodb_group }}"
+      state: absent
+      remove: yes
+      force: true
+    tags: [mongos-uninstall]
+
+  - name: Delete Mongos-Exporter User
+    user:
+      name: "{{ mongodb_exporter_user }}"
+      state: absent
+      remove: yes
+      force: true
+    tags: [mongos-uninstall, mongos-uninstall-exporter]
+
+  - name: Find Mongos-Exporter Config and Binary Files
+    find:
+      paths: 
+        - /lib/systemd/system
+        - /var
+        - /usr/bin
+        - /usr/local/bin
+        - /etc
+      patterns: "mongodb-exporter*"
+      file_type: any
+      recurse: yes
+    register: files_and_dir_to_delete
+    tags: [mongos-uninstall-exporter]
+
+  - name: Find Mongos and Mongos-Exporter Config and Binary Files
+    find:
+      paths: 
+        - /lib/systemd/system
+        - /var
+        - /usr/bin
+        - /usr/local/bin
+        - /etc
+      patterns: "*mongo*"
+      file_type: any
+      recurse: yes
+    register: files_and_dir_to_delete_mongos
+    tags: [mongos-uninstall]
+
+  - name: Delete Mongos Config and Binary Files
+    file:
+      path: "{{ files_and_dir_to_delete_item.path }}"
+      state: absent
+    with_items: "{{ files_and_dir_to_delete_mongos.files }}"
+    loop_control:
+      loop_var: files_and_dir_to_delete_item
+    become: yes
+    tags: [mongos-uninstall, mongos-uninstall-exporter]
+  when: mongodb_main_group == mongos_host_group

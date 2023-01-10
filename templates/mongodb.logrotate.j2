@@ -1,0 +1,35 @@
+{{ mongodb_systemlog_path }}
+{
+  {% if mongodb_systemlog_logrotate_config.period is defined and mongodb_systemlog_logrotate_config.period -%}
+  {{ mongodb_systemlog_logrotate_config.period }}
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.size is defined and mongodb_systemlog_logrotate_config.size -%}
+  size {{ mongodb_systemlog_logrotate_config.size }}
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.rotate is defined and mongodb_systemlog_logrotate_config.rotate -%}
+  rotate {{ mongodb_systemlog_logrotate_config.rotate }}
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.create is defined and mongodb_systemlog_logrotate_config.create -%}
+  create 640 {{ mongodb_user }} {{ mongodb_group }}
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.missingok is defined and mongodb_systemlog_logrotate_config.missingok -%}
+  missingok
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.compress is defined and mongodb_systemlog_logrotate_config.compress -%}
+  compress
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.delaycompress is defined and mongodb_systemlog_logrotate_config.delaycompress -%}
+  delaycompress
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.notifempty is defined and mongodb_systemlog_logrotate_config.notifempty -%}
+  notifempty
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.sharedscripts is defined and mongodb_systemlog_logrotate_config.sharedscripts -%}
+  sharedscripts
+  {% endif -%}
+  {%- if mongodb_systemlog_logrotate_config.postrotate is defined and mongodb_systemlog_logrotate_config.postrotate -%}
+  postrotate
+    {{ mongodb_systemlog_logrotate_config.postrotate }}
+  endscript
+  {%- endif +%}
+}
