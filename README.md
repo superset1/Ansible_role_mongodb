@@ -1,7 +1,7 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.3.0
+Version v1.3.1
 
 ## Content
 ------------
@@ -218,7 +218,7 @@ mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mong
 mongodb_replication_host_group: "mongo_cluster"
 mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharding_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
 mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
-mongodb_replication_oplogsize: 1024                                                     # Specifies a maximum size in megabytes for the replication operation log
+mongodb_replication_oplogsize: 16384                                                    # Specifies a maximum size in megabytes for the replication operation log
 mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
 
 ## Sharding options
