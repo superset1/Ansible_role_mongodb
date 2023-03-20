@@ -1,6 +1,6 @@
 ---
 
-- name: Configure a Replicaset
+- name: "{{ 'Configure a' if not mongodb_replication_reconfigure else 'Reconfigure the' }} Replicaset"
   any_errors_fatal: true
   community.mongodb.mongodb_replicaset:
     login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
@@ -38,7 +38,7 @@
 
 - name: Waiting for the Replicaset to Stabilise
   any_errors_fatal: true
-  community.mongodb.mongodb_status:
+  mongodb_status_edited: # Module allows STARTUP2 status when reconfiguring replicaset
     login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
     login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
     login_host: "localhost"
@@ -65,6 +65,7 @@
               'CERT_REQUIRED' }}"
     poll: 10
     interval: 10
+    reconfigure: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary(mongodb_replication_reconfigure, false) }}"
   register: mongodb_replicaset_status
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
 

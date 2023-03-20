@@ -5,7 +5,7 @@ galaxy_info:
   author: Vitaly Kargin
   namespace: superset1
   company: WB
-  description: Manage MongoDB with authentication and replica sets
+  description: Manage MongoDB with authentication, replica sets and sharded databases
 
   license: MIT
 

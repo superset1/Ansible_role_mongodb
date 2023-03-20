@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.1
+Version v1.5.2
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v140)
+  - [What's new](#whats-new-in-v152)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -43,9 +43,8 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.1
-- Fixed connection when creating a replicaset
-- Renamed some service variables
+### What's new in v1.5.2
+- Added `mongodb_status_edited` module allowing STARTAP2 status when reconfiguring replicaset
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
