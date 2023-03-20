@@ -1,0 +1,33 @@
+---
+
+- name: Restart MongoDB Systemd Service
+  systemd:
+    name: "{{ mongodb_daemon_name }}"
+    state: "restarted"
+    enabled: true
+  when:
+    - ansible_service_mgr == "systemd"
+    - mongodb_main_group != mongos_host_group
+  tags: [never, mongodb-force-restart]
+
+- name: Restart MongoDB Init Service
+  service:
+    name: "{{ mongodb_daemon_name }}"
+    state: "restarted"
+    enabled: true
+  when:
+    - ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
+    - mongodb_main_group != mongos_host_group
+  tags: [never, mongodb-force-restart]
+
+- name: Wait When MongoDB is Started
+  wait_for:
+    host: "{{ _mongodb_net_bindip_item }}"
+    port: "{{ mongodb_net_port }}"
+    timeout: 60
+  with_items: "{{ mongodb_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
+  loop_control:
+    loop_var: _mongodb_net_bindip_item
+  when:
+    - mongodb_main_group != mongos_host_group
+  tags: [never, mongodb-force-restart]

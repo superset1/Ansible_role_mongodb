@@ -2,7 +2,8 @@
 
 [Unit]
 Description=Prometheus exporter for MongoDB (https://github.com/percona/mongodb_exporter)
-After=network.target mongod.service
+After=network.target {{ mongodb_daemon_name if mongodb_main_group != mongos_host_group else mongos_daemon_name}}.service
+Wants=network.target
 
 [Service]
 Type=simple
@@ -10,8 +11,13 @@ RestartSec=5s
 Restart=on-failure
 User={{ mongodb_exporter_user }}
 Group={{ mongodb_exporter_group }}
-# ExecStart=/usr/local/bin/mongodb-exporter --mongodb.uri={{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin/?connect=direct
+{% if mongodb_exporter_version is version('0.33.0', '>=') %}
+ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} --collect-all{% endif %} --discovering-mode --compatible-mode --mongodb.direct-connect --mongodb.uri=mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin
+{% elif mongodb_exporter_version == '0.11.2' %}
+ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} --collect.database --collect.collection --collect.indexusage{% endif %} --collect.topmetrics --collect.connpoolstats --mongodb.uri=mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin
+{% else %}
 ExecStart=/usr/local/bin/mongodb-exporter --mongodb.uri=mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin
+{% endif %}
 ExecStop=/bin/kill -s SIGINT $MAINPID
 
 [Install]

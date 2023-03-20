@@ -3,14 +3,14 @@
   apt:
     deb: "{{ mongodb_mms_agent_pkg }}"
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
-  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
+  tags: [mongodb, mongos, mongodb-mms]
 
 - name: Install MMS agent (RHEL)
   yum:
     name: "{{ mongodb_mms_agent_pkg }}"
     state: present
   when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
-  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
+  tags: [mongodb, mongos, mongodb-mms]
 
 - name: Configure the MMS agent pt. 1
   file:
@@ -19,18 +19,18 @@
     owner: "{{ mongodb_user }}"
     group: "{{ mongodb_group }}"
     mode: 0755
-  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
+  tags: [mongodb, mongos, mongodb-mms]
 
 - name: Configure the MMS agent pt. 2
   template:
    src: mms-agent.config.j2
    dest: /etc/mongodb-mms/monitoring-agent.config
   notify: Restart MongoDB MMS Monitoring Agent
-  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
+  tags: [mongodb, mongos, mongodb-mms]
 
 - name: Ensure that the MMS agent is started
   service:
     name: mongodb-mms-monitoring-agent
     state: started
     enabled: yes
-  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
+  tags: [mongodb, mongos, mongodb-mms]

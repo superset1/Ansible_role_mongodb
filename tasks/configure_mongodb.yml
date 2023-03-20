@@ -1,11 +1,21 @@
 ---
-- name: Create MongoDB Group
+- name: Enable Force Restart MongoDB
+  changed_when: true
+  set_fact:
+    _mongodb_force_restart: true
+  notify:
+    - Include Restart MongoDB Tasks
+  when:
+    - mongodb_main_group != mongos_host_group
+  tags: [never, mongodb-force-restart]
+
+- name: Create MongoDB Linux Group '{{ mongodb_group }}'
   group:
     name: "{{ mongodb_group }}"
     state: present
   tags: [mongodb, mongodb-configure]
 
-- name: Create MongoDB User
+- name: Create MongoDB Linux User '{{ mongodb_user }}'
   user:
     name: "{{ mongodb_user }}"
     group: "{{ mongodb_group }}"
@@ -49,6 +59,10 @@
     setype: 'mongod_var_lib_t'
     recurse: true
     follow: true
+  notify:
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
   tags: [mongodb, mongodb-configure]
 
 - name: Create MongoDB KeyFile
@@ -59,10 +73,24 @@
     group: "{{ mongodb_group }}"
     mode: 0400
   notify:
-    - Restart MongoDB Systemd Service
-    - Restart MongoDB Service
-    - Wait When MongoDB is Started
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
   when: mongodb_replication_enabled
+  tags: [mongodb, mongodb-configure]
+
+- name: Configure MongoDB
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    backup: true
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
+    mode: 0644
+  notify:
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
   tags: [mongodb, mongodb-configure]
 
 - name: Configure MongoDB Logrotate
@@ -75,31 +103,18 @@
   when: mongodb_systemlog_destination == 'file'
   tags: [mongodb, mongodb-configure, mongodb-logrotate]
 
-- name: Configure MongoDB
-  template:
-    src: mongod.conf.j2
-    dest: /etc/mongod.conf
-    backup: true
-    owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_group }}"
-    mode: 0644
-  notify:
-    - Restart MongoDB Systemd Service
-    - Restart MongoDB Service
-    - Wait When MongoDB is Started
-  tags: [mongodb, mongodb-configure]
-
 - name: Add MongoDB Systemd Configuration if Present
   template:
-    src: mongodb.service.j2
+    src: mongod.service.j2
     dest: "/lib/systemd/system/{{ mongodb_daemon_name }}.service"
     owner: root
     group: root
     mode: '0644'
   notify:
     - Systemd Daemon Reload
-    - Restart MongoDB Systemd Service
-    - Wait When MongoDB is Started
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
   when: ansible_service_mgr == "systemd"
   tags: [mongodb, mongodb-configure]
 

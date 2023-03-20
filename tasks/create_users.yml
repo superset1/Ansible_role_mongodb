@@ -2,6 +2,7 @@
 
 - name: Create Root User '{{ mongodb_root_admin_name }}' {{ 'in the Replicaset' if mongodb_replication_enabled else '' }}
   any_errors_fatal: true
+  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname)}}"
   mongodb_user:
     name: "{{ item.name }}"
     password: "{{ item.password }}"
@@ -17,11 +18,9 @@
     replica_set: "{{ (mongodb_replication_enabled and not mongodb_root_admin_exist.failed ) | ternary(mongodb_replication_replset, omit) }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
-    - {
-      name: "{{ mongodb_root_admin_name }}",
-      password: "{{ mongodb_root_admin_password }}",
+    - name: "{{ mongodb_root_admin_name }}"
+      password: "{{ mongodb_root_admin_password }}"
       roles: "root"
-      }
   tags: [mongodb, mongodb-create-admin-users]
 
 - name: Ensure that Root User '{{ mongodb_root_admin_name }}' Was Created in the Replicaset
@@ -66,8 +65,8 @@
 
 - name: Create Custom Backup Role 'backupCustom' When mongodb_version >= 6.0
   community.mongodb.mongodb_shell:
-    login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
-    login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
+    login_user: "{{ mongodb_root_admin_name }}"
+    login_password: "{{ mongodb_root_admin_password }}"
     login_host: "{{ groups[mongodb_main_group] | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
@@ -90,70 +89,66 @@
     database: "{{ mongodb_login_database }}"
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "{{ inventory_hostname }}"
+    login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
-    - {
-      name: "{{ mongodb_user_admin_name }}",
-      password: "{{ mongodb_user_admin_password }}",
-      roles: "userAdminAnyDatabase",
-      }
-    - {
-      name: "{{ mongodb_root_backup_name }}",
-      password: "{{ mongodb_root_backup_password }}",
+    - name: "{{ mongodb_user_admin_name }}"
+      password: "{{ mongodb_user_admin_password }}"
+      roles: "userAdminAnyDatabase"
+    - name: "{{ mongodb_root_backup_name }}"
+      password: "{{ mongodb_root_backup_password }}"
       roles: "backup,clusterMonitor{{ ',backupCustom' if mongodb_major_version is version('6.0', '>=') else '' }}"
-      }
   tags: [mongodb, mongodb-create-admin-users]
 
 - name: Create Oplog User in the Replicaset
   mongodb_user:
     name: "{{ item.name }}"
-    password: "{{ item.password }}"
-    update_password: "{{ mongodb_admin_update_password | ternary('always', 'on_create') }}"
-    state: present
+    password: "{{ item.password | default(omit) }}"
+    update_password: "{{ (mongodb_admin_update_password or item.update_password | default(false)) | ternary('always', 'on_create') }}"
+    state: "{{ item.state | default('present') }}"
     roles:
       - db: local
         role: read
     database: "{{ mongodb_login_database }}"
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "{{ inventory_hostname }}"
+    login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
-    - "{{ mongodb_oplog_users | default([]) }}"
+    - "{{ mongodb_oplog_users }}"
   when:
     - mongodb_replication_enabled
     - mongodb_master is defined
     - mongodb_master
-    - item.name is defined and item.name | length > 0
-    - item.password is defined and item.password | length > 0
+    - mongodb_oplog_users is defined
+    - mongodb_oplog_users | length > 0
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users]
 
 - name: Add Normal Users {{ 'in the Replicaset' if mongodb_replication_enabled else '' }}
   mongodb_user:
     name: "{{ item.name }}"
-    password: "{{ item.password }}"
-    update_password: "{{ mongodb_user_update_password | ternary('always', 'on_create') }}"
-    state: present
-    roles: "{{ item.roles }}"
-    database: "{{ item.database | default(mongodb_login_database) }}"
+    password: "{{ item.password | default(omit) }}"
+    update_password: "{{ (mongodb_user_update_password or item.update_password | default(false)) | ternary('always', 'on_create') }}"
+    state: "{{ item.state | default('present') }}"
+    roles: "{{ item.roles | default(omit) }}"
+    database: "{{ item.database | default(item.name) }}"
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "{{ inventory_hostname }}"
+    login_host: "localhost"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ mongodb_replication_enabled | ternary(mongodb_replication_replset, omit) }}"
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   with_items:
-    - "{{ mongodb_users | default([]) }}"
-  when: 
-    - item.name is defined and item.name | length > 0
-    - item.password is defined and item.password | length > 0
-    - item.roles is defined and item.roles | length > 0
+    - "{{ mongodb_users }}"
+  when:
+    - mongodb_users is defined
+    - mongodb_users | length > 0
+    - (mongodb_sharding_enabled and mongodb_main_group == mongodb_config_host_group) or not mongodb_sharding_enabled
   tags: [mongodb, mongodb-add-users]

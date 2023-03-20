@@ -1,13 +1,16 @@
 # {{ ansible_managed }}
 
 [Unit]
-Description=mongos
-After=syslog.target
+Description=Mongos Server
+Documentation=https://docs.mongodb.org/manual
 After=network.target
+Wants=network.target
 
 [Service]
 User={{ mongos_user }}
 Group={{ mongos_group }}
+RestartSec=5s
+Restart=on-failure
 PIDFile={{ mongos_pidfile_path | default('/run/mongodb/mongos.pid') }}
 PermissionsStartOnly=true
 ExecStartPre=/usr/local/bin/mongos_pre.sh
@@ -19,7 +22,6 @@ LimitAS=infinity
 LimitNOFILE={{ mongos_systemd_unit_limit_nofile }}
 LimitNPROC={{ mongos_systemd_unit_limit_nproc }}
 TasksAccounting=false
-Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

@@ -1,10 +1,10 @@
 ---
 - name: Gathering Service Facts
   service_facts:
-  tags: [mongodb-uninstall, mongodb-uninstall-exporter, mongos-uninstall, mongos-uninstall-exporter]
+  tags: [mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-uninstall-exporter]
 
 - block:  
-  - name: Stop MongoDB-Exporter Service if Exist
+  - name: Stop MongoDB Prometheus Exporter Service if Exist
     ignore_errors: true
     systemd:
       name: mongodb-exporter.service
@@ -48,7 +48,7 @@
     lock_timeout: "{{ yum_lock_timeout }}"
     tags: [mongodb-uninstall]
 
-  - name: Delete MongoDB User
+  - name: Delete MongoDB Linux User '{{ mongodb_user }}'
     user:
       name: "{{ mongodb_user }}"
       group: "{{ mongodb_group }}"
@@ -57,7 +57,7 @@
       force: true
     tags: [mongodb-uninstall]
 
-  - name: Delete MongoDB-Exporter User
+  - name: Delete MongoDB Prometheus Exporter User '{{ mongodb_exporter_user }}'
     user:
       name: "{{ mongodb_exporter_user }}"
       state: absent
@@ -65,7 +65,7 @@
       force: true
     tags: [mongodb-uninstall, mongodb-uninstall-exporter]
 
-  - name: Find MongoDB-Exporter Config and Binary Files
+  - name: Find MongoDB Prometheus Exporter Config and Binary Files
     find:
       paths: 
         - /lib/systemd/system
@@ -79,7 +79,7 @@
     register: files_and_dir_to_delete
     tags: [mongodb-uninstall-exporter]
 
-  - name: Find MongoDB and MongoDB-Exporter Config and Binary Files
+  - name: Find MongoDB and MongoDB Prometheus Exporter Config and Binary Files
     find:
       paths: 
         - /lib/systemd/system
@@ -100,18 +100,18 @@
     tags: [mongodb-dbdelete]
 
   - name: Delete MongoDB Config and Binary Files
+    become: true
     file:
       path: "{{ files_and_dir_to_delete_item.path }}"
       state: absent
     with_items: "{{ files_and_dir_to_delete.files }}"
     loop_control:
       loop_var: files_and_dir_to_delete_item
-    become: yes
     tags: [mongodb-uninstall, mongodb-uninstall-exporter]
   when: mongodb_main_group != mongos_host_group
 
 - block:
-  - name: Stop Mongos-Exporter Service if Exist
+  - name: Stop MongoDB Prometheus Exporter Service if Exist
     ignore_errors: true
     systemd:
       name: mongodb-exporter.service
@@ -122,7 +122,7 @@
       - "'mongodb-exporter.service' in ansible_facts.services"
     notify:
       - Systemd Daemon Reload
-    tags: [mongos-uninstall, mongos-uninstall-exporter]
+    tags: [mongos-uninstall, mongodb-uninstall-exporter]
 
   - name: Stop Mongos Service if Exist
     ignore_errors: true
@@ -139,7 +139,7 @@
 
   - name: Systemctl Reset Failed Services
     command: systemctl reset-failed
-    tags: [mongos-uninstall, mongos-uninstall-exporter]
+    tags: [mongos-uninstall, mongodb-uninstall-exporter]
 
   - name: Uninstall Mongos Package
     yum:
@@ -155,24 +155,24 @@
     lock_timeout: "{{ yum_lock_timeout }}"
     tags: [mongos-uninstall]
 
-  - name: Delete MongoDB User
+  - name: Delete Mongos Linux User '{{ mongos_user }}'
     user:
-      name: "{{ mongodb_user }}"
-      group: "{{ mongodb_group }}"
+      name: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
       state: absent
       remove: yes
       force: true
     tags: [mongos-uninstall]
 
-  - name: Delete Mongos-Exporter User
+  - name: Delete MongoDB Prometheus Exporter User '{{ mongodb_exporter_user }}'
     user:
       name: "{{ mongodb_exporter_user }}"
       state: absent
       remove: yes
       force: true
-    tags: [mongos-uninstall, mongos-uninstall-exporter]
+    tags: [mongos-uninstall, mongodb-uninstall-exporter]
 
-  - name: Find Mongos-Exporter Config and Binary Files
+  - name: Find MongoDB Prometheus Exporter Config and Binary Files
     find:
       paths: 
         - /lib/systemd/system
@@ -184,9 +184,9 @@
       file_type: any
       recurse: yes
     register: files_and_dir_to_delete
-    tags: [mongos-uninstall-exporter]
+    tags: [mongodb-uninstall-exporter]
 
-  - name: Find Mongos and Mongos-Exporter Config and Binary Files
+  - name: Find Mongos and MongoDB Prometheus Exporter Config and Binary Files
     find:
       paths: 
         - /lib/systemd/system
@@ -201,12 +201,12 @@
     tags: [mongos-uninstall]
 
   - name: Delete Mongos Config and Binary Files
+    become: true
     file:
       path: "{{ files_and_dir_to_delete_item.path }}"
       state: absent
     with_items: "{{ files_and_dir_to_delete_mongos.files }}"
     loop_control:
       loop_var: files_and_dir_to_delete_item
-    become: yes
-    tags: [mongos-uninstall, mongos-uninstall-exporter]
+    tags: [mongos-uninstall, mongodb-uninstall-exporter]
   when: mongodb_main_group == mongos_host_group

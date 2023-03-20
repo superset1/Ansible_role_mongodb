@@ -53,7 +53,7 @@
   assert:
     that:
       - "{{ hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')|map(attribute='1.mongodb_master')|list }}"
-    fail_msg: 'Set mongodb_master to True next to the master server or set mongodb_replication_enabled to False in hosts file!'
+    fail_msg: 'Set mongodb_master to True next to the master server in hosts file!'
     quiet: true
   when: 
     - mongodb_replication_enabled
@@ -82,7 +82,7 @@
     quiet: true
   when: 
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter, mongos-exporter]
+  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Replicaset
   community.mongodb.mongodb_status:
@@ -96,7 +96,7 @@
     validate: votes
     poll: 2
     interval: 1
-  ignore_errors: yes
+  ignore_errors: true
   register: mongodb_root_admin_exist_replicaset
   when:
     - mongodb_replication_enabled
@@ -104,7 +104,7 @@
     - mongodb_master
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter, mongos-exporter]
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Standalone Database
   community.mongodb.mongodb_info:
@@ -116,7 +116,7 @@
     ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
   async: 3
   poll: 2
-  ignore_errors: yes
+  ignore_errors: true
   register: mongodb_root_admin_exist_standalone
   when: 
     - not mongodb_replication_enabled
@@ -136,7 +136,7 @@
     executable: "/bin/bash"
   register: cpu_avx_flag_support
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
   when: mongodb_major_version is version("5.0", ">=")
   tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 

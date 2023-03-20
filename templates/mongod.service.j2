@@ -1,0 +1,41 @@
+# {{ ansible_managed }}
+
+[Unit]
+Description=MongoDB Database Server
+Documentation=https://docs.mongodb.org/manual
+After=network.target
+Wants=network.target
+
+[Service]
+User={{ mongodb_user }}
+Group={{ mongodb_group }}
+RestartSec=5s
+Restart=on-failure
+{% if mongodb_use_numa %}
+ExecStart=/usr/bin/numactl --interleave=all /usr/bin/mongod --config /etc/mongod.conf
+{% else %}
+ExecStart=/usr/bin/mongod --config /etc/mongod.conf
+{% endif %}
+EnvironmentFile=-/etc/default/mongod
+PIDFile={{ mongodb_pidfile_path | default('/run/mongodb/mongod.pid') }}
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE={{ mongodb_systemd_unit_limit_nofile }}
+# processes/threads
+LimitNPROC={{ mongodb_systemd_unit_limit_nproc }}
+# locked memory
+LimitMEMLOCK=infinity
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+
+# Recommended limits for mongod as specified in
+# https://docs.mongodb.com/manual/reference/ulimit/#recommended-ulimit-settings
+
+[Install]
+WantedBy=multi-user.target

@@ -1,11 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.3.1
+Version v1.4.0
 
 ## Content
 ------------
 - [General info](#general-info)
+  - [What's new](#whats-new-in-v140)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -22,6 +23,11 @@ Version v1.3.1
   - [Sharding](#sharding)
     - [Example hosts file for sharded cluster](#example-hosts-file-for-sharded-cluster)
     - [Example var file for sharded cluster](#example-var-file-for-sharded-cluster)
+  - [Other examples](#other-examples)
+    - [Adding normal users to the worked production database](#adding-normal-users-to-the-worked-production-database)
+    - [Deleting normal users from the worked production database](#deleting-normal-users-from-the-worked-production-database)
+    - [Updating passwords for admins and normal users](#updating-passwords-for-admins-and-normal-users)
+  - [License](#license)
 
 ## General info
 
@@ -36,6 +42,21 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Provide handlers for restart and reload
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
+
+### What's new in v1.4.0
+- Added ability to delete specific user from database
+- Added ability to update specific user password in the database
+- Added enabling sharding in the databases using the `mongodb_sharding_databases` list
+- Deleted deprecated variable `mongodb_replication_enabled` from examples
+- Disabled `restart` of running MongoDB and Mongos services without tags `mongodb-force-restart, mongos-force-restart` (`start` by default)
+- Disabled `restart` of all servers at once, now one by one
+- Fixed systemd unit: added RestartSec=5s, changed Restart=on-failure to properly restart
+- Fixed users creation task: normal users are no longer created on MongoDB shards, but only created on config servers
+- Made variable `mongodb_master` optional (1st server will be master by default)
+- Made `mongodb_users` user list more clear
+- Set `mongodb_replication_oplogsize: 4096` by default
+- Updated MongoDB Prometheus Exporter to version `0.37.0` with the exception of MongoDB Arbiter (it has `0.11.2`)
+- Updated README: added examples
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -69,24 +90,23 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - mongodb-install (install mongodb only)
 - mongodb-configure (initial mongodb configure)
 - mongodb-logrotate (configure mongodb logrotate)
-- mongodb-replicaset (configure replicaset when `mongodb_replication_enabled` is True)
+- mongodb-replicaset (configure replicaset)
 - mongodb-create-admin-users (create initial users)
 - mongodb-create-oplog-users (create oplog users)
 - mongodb-add-users (add normal users anytime even on worked prod mongodb)
-- mongodb-mms (install mms agent on mongodb)
-- mongodb-exporter (install mongodb-exporter)
-- mongodb-uninstall (uninstall mongodb, mongodb-exporter, but don't delete database)
-- mongodb-uninstall-exporter (uninstall mongodb-exporter, but don't delete database)
-- mongodb-dbdelete (delete database)
+- mongodb-force-restart (restart service mongodb | default is start only)
 - mongos (main tag for all mongos tasks | optional tag)
 - mongos-install (install mongos only)
 - mongos-configure (initial mongos configure)
 - mongos-logrotate (configure mongos logrotate)
 - mongos-sharding (configure shards)
-- mongos-mms (install mms agent on mongos)
-- mongos-exporter (install mongodb-exporter)
-- mongos-uninstall (uninstall mongos, mongos-exporter, but don't delete database)
-- mongos-uninstall-exporter (uninstall mongos-exporter, but don't delete database)
+- mongos-force-restart (restart service mongos | default is start only)
+- mongodb-mms (install mms agent)
+- mongodb-exporter (install mongodb-exporter)
+- mongodb-uninstall (uninstall mongodb, mongodb-exporter, but don't delete database)
+- mongodb-uninstall-exporter (uninstall mongodb-exporter, but don't delete database)
+- mongodb-dbdelete (delete database)
+- mongos-uninstall (uninstall mongos, mongodb-exporter, but don't delete database)
 
 ## MongoDB support matrix:
 
@@ -123,16 +143,18 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 
 ## Main options
 ansible_user: root
+mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
 mongodb_package: "mongodb-org"
 mongodb_package_state: "present"
-mongodb_version: "4.4"
+mongodb_version: "4.4"                           # Default MongoDB version
 
 mongodb_pymongo_from_pip: true                   # Install latest PyMongo via PIP or package manager
 mongodb_pymongo_pip_version: 4.2.0               # Choose PyMong version to install from pip. If not set use latest
 
-mongodb_admin_update_password: false             # Update password every play if true
-mongodb_user_update_password: false              # Update password every play if true
+mongodb_admin_update_password: false             # Update admin passwords every play if true
+mongodb_user_update_password: false              # Update normal user passwords every play if true
 mongodb_manage_service: true
+
 mongodb_systemd_unit_limit_nofile: 64000
 mongodb_systemd_unit_limit_nproc: 64000
 
@@ -144,7 +166,6 @@ mongodb_login_database: "admin"
 
 mongodb_user: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
 mongodb_group: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
-mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
   
 ## Net options
 mongodb_net_bindip: 0.0.0.0                      # Comma separated list of ip addresses to listen on
@@ -218,12 +239,13 @@ mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mong
 mongodb_replication_host_group: "mongo_cluster"
 mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharding_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
 mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
-mongodb_replication_oplogsize: 16384                                                    # Specifies a maximum size in megabytes for the replication operation log
+mongodb_replication_oplogsize: 4096                                                     # Specifies a maximum size in megabytes for the replication operation log
 mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
 
 ## Sharding options
-mongodb_sharding_state: "present"
-mongodb_sharding_host_group: "mongo_shard_"
+mongodb_sharding_state: "present"                                                       # Adding replicaset to sharding the cluster
+mongodb_sharding_databases: []                                                          # List of databases to run command sh.enableSharding()
+mongodb_sharding_host_group: "mongo_shard_"                                             # Prefix for shards group in the hosts file
 
 ## Mongocfg options
 mongodb_config_host_group: "mongocfg_servers"
@@ -234,14 +256,15 @@ mongos_host_group: "mongos_servers"
 mongos_daemon_name: "mongos"
 mongos_package: "mongodb-org-mongos"
 mongos_package_state: "present"
+mongos_version: "{{ mongodb_version }}"
 
-mongos_user: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
-mongos_group: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
+mongos_user: "{{ 'mongos' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
+mongos_group: "{{ 'mongos' if ('RedHat' == ansible_os_family) else 'mongodb' }}"
 
 mongos_systemlog_destination: "file"
 mongos_systemlog_logappend: true
 mongos_systemlog_logrotate: "rename"
-mongos_systemlog_path: "/var/log/mongodb/mongos.log"
+mongos_systemlog_path: /var/log/mongodb/{{ mongos_daemon_name }}.log
 mongos_systemlog_logrotate_config:
   period: daily
   size: 1G
@@ -286,19 +309,19 @@ mongodb_root_backup_password: ""
 mongodb_exporter_name: "mongodbexporter"
 mongodb_exporter_password: ""
 
-mongodb_users: # Optional: If you want to add multiple regular users
-  - {
-    name: "",
-    password: "",
-    roles: "",
-    database: ""
-    }
+mongodb_users: {} # Optional: If you want to add multiple regular users
+  # - name: ""
+  #   password: ""
+  #   roles: ""
+  #   database: "" # Optional: (Default: user name)
+  #   state: "" # Optional: present|absent (Default: present)
+  #   update_password: false # Optional: true|false (Default: false)
 
-mongodb_oplog_users: # Optional: If you want to add multiple oplog users
-  - {
-    name: "",
-    password: ""
-    }
+mongodb_oplog_users: {} # Optional: If you want to add multiple oplog users
+  # - name: ""
+  #   password: ""
+  #   state: "" # Optional: present|absent (Default: present)
+  #   update_password: false # Optional: true|false (Default: false)
 
 # Set parameter config
 mongodb_set_parameters:
@@ -310,7 +333,8 @@ mongodb_config:
 mongodb_exporter_user: "mongodb-exporter"
 mongodb_exporter_group: "{{ mongodb_exporter_user }}"
 mongodb_exporter_enabled: "true"
-mongodb_exporter_version: "{{ '0.30.0' if mongodb_sharding_enabled else '0.11.2' }}"
+mongodb_exporter_version: "0.37.0"
+mongodb_exporter_version_arbiter: "0.11.2"
 mongodb_exporter_link: "https://github.com/percona/mongodb_exporter/releases/download/v{{ mongodb_exporter_version }}/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"
 mongodb_exporter_path: "/usr/local/bin/mongodb-exporter"
 mongodb_exporter_checksum_link: "https://github.com/percona/mongodb_exporter/releases/download/v{{ mongodb_exporter_version }}/mongodb_exporter_{{ mongodb_exporter_version }}_checksums.txt"
@@ -340,25 +364,26 @@ www.host1.com
 
 ### Example var file without replication with required variables
 ```yaml
+mongodb_version: "6.0"
+
 mongodb_user_admin_password: "mongoadm"
 mongodb_root_admin_password: "mongoroot"
 mongodb_root_backup_password: "mongobackup"
 mongodb_exporter_password: "mongodbexporter" # Required if variable mongodb_exporter_enabled is True
 
 mongodb_users: # Optional if you want to add multiple regular users
-  - {
-    name: user1,
-    password: "password1",
-    roles: readWrite,
-    database: database1
-    }
-  - {
-    name: user2,
-    password: "password2",
-    roles: read,
-    database: database2
-    }
-
+  - name: admin
+    password: "admin_password"
+    roles: readWriteAnyDatabase
+    database: admin
+  - name: user_rw
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database
+  - name: user_ro
+    password: "user_ro_password"
+    roles: read
+    database: user_database
 ```
 
 ## Replicaset
@@ -367,7 +392,7 @@ mongodb_users: # Optional if you want to add multiple regular users
 
 ```ini
 [mongo_cluster]
-www.host1.com mongodb_master=True # Optional variable, because if it's not set, then the 1st host will be master by default when mongodb_replication_enabled
+www.host1.com mongodb_master=True # Optional variable, because if it's not set, then the 1st host will be master by default
 www.host2.com
 www.host3.com
 www.host4.com
@@ -377,7 +402,6 @@ www.host5.com mongodb_arbiter=True # Optional variable if you need arbiter
 ### Example var file for replication
 ```yaml
 mongodb_version: "6.0"
-mongodb_replication_enabled: true
 
 mongodb_root_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
 mongodb_user_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_user_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
@@ -386,24 +410,22 @@ mongodb_exporter_password: "{{ lookup('hashi_vault', 'secret=services/test-names
 mongodb_keyfile_content: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_keyfile_content token={{ vault_token }} url={{ vault_url }}') }}"
 
 mongodb_users: # Optional if you want to add multiple regular users
-  - {
-    name: user1,
-    password: "password1",
-    roles: readWrite,
-    database: database1
-    }
-  - {
-    name: user2,
-    password: "password2",
-    roles: read,
-    database: database2
-    }
+  - name: admin
+    password: "admin_password"
+    roles: readWriteAnyDatabase
+    database: admin
+  - name: user_rw
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database
+  - name: user_ro
+    password: "user_ro_password"
+    roles: read
+    database: user_database
     
 mongodb_oplog_users: # Optional if you want to add oplog user
-  - {
-    name: oplog,
-    password: oplog_password
-    }
+  - name: oplog
+    password: "oplog_password"
 ```
 
 ## Sharding
@@ -441,7 +463,10 @@ mongo_shard_02
 ### Example var file for sharded cluster
 ```yaml
 mongodb_version: "6.0"
-mongodb_replication_enabled: true
+
+mongodb_sharding_databases: # List of databases to run command sh.enableSharding()
+  - user_database_1
+  - user_database_2
 
 mongodb_root_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
 mongodb_user_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_user_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
@@ -450,51 +475,110 @@ mongodb_exporter_password: "{{ lookup('hashi_vault', 'secret=services/test-names
 mongodb_keyfile_content: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_keyfile_content token={{ vault_token }} url={{ vault_url }}') }}"
 
 mongodb_users: # Optional if you want to add multiple regular users
-  - {
-    name: user1,
-    password: "password1",
-    roles: readWrite,
-    database: database1
-    }
-  - {
-    name: user2,
-    password: "password2",
-    roles: read,
-    database: database2
-    }
+  - name: admin
+    password: "admin_password"
+    roles: readWriteAnyDatabase
+    database: admin
+  - name: user_rw_1
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database_1
+  - name: user_ro_1
+    password: "user_ro_password"
+    roles: read
+    database: user_database_1
+  - name: user_rw_2
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database_2
+  - name: user_ro_2
+    password: "user_ro_password"
+    roles: read
+    database: user_database_2
     
 mongodb_oplog_users: # Optional if you want to add oplog user
-  - {
-    name: oplog,
-    password: oplog_password
-    }
+  - name: oplog
+    password: "oplog_password"
 ```
 
 ## Other examples
 
 ### Adding normal users to the worked production database
 
-To add users, simply add a new user (e.g. `User3`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
+To add users, simply add a new user (e.g. `new_user`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
 ```yaml
-mongodb_users:
-  - {
-    name: user1,
-    password: "password1",
-    roles: readWrite,
-    database: database1
-    }
-  - {
-    name: user2,
-    password: "password2",
-    roles: read,
-    database: database2
-    }
-  - {
-    name: user3,
-    password: "password3",
-    roles: readWrite,
-    database: database3
-    }
+mongodb_users: # Optional if you want to add multiple regular users
+  - name: admin
+    password: "admin_password"
+    roles: readWriteAnyDatabase
+    database: admin
+  - name: user_rw
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database
+  - name: user_ro
+    password: "user_ro_password"
+    roles: read
+    database: user_database
+  - name: new_user
+    password: "new_user_password"
+    roles: readWrite
+    database: new_user_database
+```
+
+### Deleting normal users from the worked production database
+
+To delete users, add key `state: absent` for a specific user (e.g. `new_user`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
+```yaml
+mongodb_users: # Optional if you want to add multiple regular users
+  - name: admin
+    password: "admin_password"
+    roles: readWriteAnyDatabase
+    database: admin
+  - name: user_rw
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database
+  - name: user_ro
+    password: "user_ro_password"
+    roles: read
+    database: user_database
+  - name: new_user
+    database: new_user_database
+    state: absent # Optional: present|absent (Default: present)
+
+mongodb_oplog_users: # Optional if you want to add oplog user
+  - name: oplog
+    state: absent # Optional: present|absent (Default: present)
+```
+
+### Updating passwords for admins and normal users
+
+To update passwords for all admin users, set global variable `mongodb_admin_update_password: true`
+
+To update passwords for all normal users, set global variable `mongodb_user_update_password: true`
+
+To selectively update normal user passwords, add key `update_password: true` for a specific user (e.g. `user_ro`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
+```yaml
+mongodb_users: # Optional if you want to add multiple regular users
+  - name: admin
+    password: "admin_password"
+    roles: readWriteAnyDatabase
+    database: admin
+  - name: user_rw
+    password: "user_rw_password"
+    roles: readWrite
+    database: user_database
+  - name: user_ro
+    password: "user_ro_new_password"
+    roles: read
+    database: user_database
+    update_password: true # Optional: true|false (Default: false)
+
+mongodb_oplog_users: # Optional if you want to add oplog user
+  - name: oplog
+    password: "oplog_new_password"
+    update_password: true # Optional: true|false (Default: false)
 ```
 
 **See worked example in tests/ directory**

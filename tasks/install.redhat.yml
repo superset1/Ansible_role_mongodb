@@ -29,7 +29,7 @@
     - mongos_package == 'mongodb-org-mongos'
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Install MongoDB Package
+- name: Install MongoDB Package '{{ mongodb_version }}'
   yum:
     name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
     state: "{{ mongodb_package_state }}"
@@ -37,9 +37,9 @@
   when: mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-install]
 
-- name: Install Mongos Package
+- name: Install Mongos Package '{{ mongos_version }}'
   yum:
-    name: "{{ mongos_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    name: "{{ mongos_package }}{% if (mongos_version | length > 3) %}={{ mongos_version }}{% endif %}"
     state: "{{ mongos_package_state }}"
     lock_timeout: "{{ yum_lock_timeout }}"
   when: mongodb_main_group == mongos_host_group

@@ -76,6 +76,7 @@
 
 - name: Shell Apt Update to Allow Repository Change
   shell: apt update -y --allow-releaseinfo-change
+  changed_when: false
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install Gnupg Package
@@ -107,7 +108,7 @@
     - mongos_package == 'mongodb-org-mongos'
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Install MongoDB Package
+- name: Install MongoDB Package '{{ mongodb_version }}'
   apt:
     name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
     state: "{{ mongodb_package_state }}"
@@ -115,9 +116,9 @@
   when: mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-install]
 
-- name: Install Mongos Package
+- name: Install Mongos Package '{{ mongos_version }}'
   apt:
-    name: "{{ mongos_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    name: "{{ mongos_package }}{% if (mongos_version | length > 3) %}={{ mongos_version }}{% endif %}"
     state: "{{ mongos_package_state }}"
     update_cache: true
   when: mongodb_main_group == mongos_host_group

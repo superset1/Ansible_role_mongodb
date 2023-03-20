@@ -2,58 +2,93 @@
 
 - name: Systemd Daemon Reload
   systemd:
-    daemon_reload: yes
+    daemon_reload: true
   when: ansible_service_mgr == "systemd"
 
-- name: Restart MongoDB Systemd Service
+# Mongod
+- name: Start MongoDB Systemd Service
   systemd:
     name: "{{ mongodb_daemon_name }}"
-    state: restarted
+    state: "started"
     enabled: true
-  when: ansible_service_mgr == "systemd"
+  when:
+    - ansible_service_mgr == "systemd"
+    - mongodb_main_group != mongos_host_group
 
-- name: Restart MongoDB Service
+- name: Start MongoDB Init Service
   service:
     name: "{{ mongodb_daemon_name }}"
-    state: restarted
+    state: "started"
     enabled: true
-  when: ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
+  when:
+    - ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
+    - mongodb_main_group != mongos_host_group
 
 - name: Wait When MongoDB is Started
   wait_for:
-    host: "{{ item }}"
+    host: "{{ _mongodb_net_bindip_item }}"
     port: "{{ mongodb_net_port }}"
-    timeout: 120
-    delay: 10
+    timeout: 60
   with_items: "{{ mongodb_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
+  loop_control:
+    loop_var: _mongodb_net_bindip_item
+  when:
+    - mongodb_main_group != mongos_host_group
 
-- name: Restart Mongos Systemd Service
+- name: Include Restart MongoDB Tasks
+  include_tasks: restart_mongodb.yml
+  with_items: "{{ inventory_hostname }}"
+  when:
+    - mongodb_main_group != mongos_host_group
+    - _mongodb_force_restart is defined
+    - _mongodb_force_restart
+  tags: [never, mongodb-force-restart]
+
+# Mongos
+- name: Start Mongos Systemd Service
   systemd:
     name: "{{ mongos_daemon_name }}"
-    state: restarted
+    state: "started"
     enabled: true
-  when: ansible_service_mgr == "systemd"
+  when:
+    - ansible_service_mgr == "systemd"
+    - mongodb_main_group == mongos_host_group
 
-- name: Restart Mongos Service
+- name: Start Mongos Init Service
   service:
     name: "{{ mongos_daemon_name }}"
-    state: restarted
+    state: "started"
     enabled: true
-  when: ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
+  when:
+    - ansible_service_mgr == 'sysvinit' or ansible_service_mgr == 'service'
+    - mongodb_main_group == mongos_host_group
 
 - name: Wait When Mongos is Started
   wait_for:
-    host: "{{ item }}"
+    host: "{{ _mongos_net_bindip_item }}"
     port: "{{ mongos_net_port }}"
-    timeout: 120
-    delay: 10
-  with_items: "{{ mongodb_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
+    timeout: 60
+  with_items: "{{ mongos_net_bindip.split(',') | map('replace', '0.0.0.0', '127.0.0.1') | list }}"
+  loop_control:
+    loop_var: _mongos_net_bindip_item
+  when:
+    - mongodb_main_group == mongos_host_group
 
+- name: Include Restart Mongos Tasks
+  include_tasks: restart_mongos.yml
+  with_items: "{{ inventory_hostname }}"
+  when:
+    - mongodb_main_group == mongos_host_group
+    - _mongos_force_restart is defined
+    - _mongos_force_restart
+
+# MMS
 - name: Restart MongoDB MMS Monitoring Agent
   service:
     name: mongodb-mms-monitoring-agent
     state: restarted
 
+# MongoDB-Exporter
 - name: Restart MongoDB-Exporter
   systemd:
     name: mongodb-exporter

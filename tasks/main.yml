@@ -9,7 +9,7 @@
 - name: Set Main Group For Hosts
   set_fact:
     mongodb_main_group: "{{ group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first }}"
-  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongos-configure, mongos-logrotate, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongos-mms, mongodb-exporter, mongos-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongos-uninstall-exporter, mongodb-dbdelete]
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongodb-force-restart, mongos-configure, mongos-logrotate, mongos-force-restart, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongodb-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
 
 - name: Include OS-specific Variables
   include_vars: "{{ item }}"
@@ -19,8 +19,8 @@
     - "{{ ansible_os_family }}.yml"
   tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
 
-- name: Set mongodb_master When mongodb_replication_enabled ans Master is not Set in the Hosts File
-  set_fact: 
+- name: Set 'mongodb_master' to 1st Host of Replicaset if It's Not Defined
+  set_fact:
     mongodb_master: true
   with_items:
     - "{{ mongodb_main_group }}"
@@ -29,19 +29,19 @@
     - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_master', 'defined')
     - inventory_hostname == groups[mongodb_main_group][0]
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-replicaset, mongos-sharding]
+  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
 - name: Include Validation Tasks
   include_tasks: "validate.yml"
-  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-exporter, mongos-exporter]
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-exporter]
 
-- name: Include Mongo and MongoDB-Exporter Remove Tasks
+- name: Include MongoDB and MongoDB-Exporter Remove Tasks
   include_tasks: "{{ item }}"
   with_first_found:
     - "uninstall.{{ ansible_distribution_release | lower }}.yml"
     - "uninstall.{{ ansible_distribution | lower }}.yml"
     - "uninstall.{{ ansible_os_family | lower }}.yml"
-  tags: [never, mongodb-uninstall, mongodb-uninstall-exporter, mongos-uninstall, mongos-uninstall-exporter, mongodb-dbdelete]
+  tags: [never, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
 
 - name: Include Installation Tasks
   include_tasks: "{{ item }}"
@@ -53,9 +53,9 @@
 - name: Include MongoDB Configuration Tasks
   include_tasks: configure_mongodb.yml
   when: mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-configure, mongodb-logrotate]
+  tags: [mongodb, mongodb-configure, mongodb-logrotate, mongodb-force-restart]
 
-- name: Set Index of Arbiter in Hosts File
+- name: Set Arbiter Index if 'mongodb_arbiter' is Defined
   set_fact: 
     mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
   with_items:
@@ -67,13 +67,13 @@
   tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
 - name: Include Replication Tasks for Master
-  include_tasks: create_replicaset.yml
+  include_tasks: configure_replicaset.yml
   when:
     - mongodb_replication_enabled
     - mongodb_master is defined
     - mongodb_master
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-replicaset]
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
 
 - name: Include Users Creation Tasks {{ 'for Master' if mongodb_replication_enabled else '' }}
   include_tasks: create_users.yml
@@ -87,7 +87,7 @@
   when: 
     - mongodb_main_group == mongos_host_group
     - mongodb_sharding_enabled
-  tags: [mongos, mongos-configure, mongos-logrotate]
+  tags: [mongos, mongos-configure, mongos-logrotate, mongos-force-restart]
 
 - name: Include Mongos Sharding Configuration Tasks
   include_tasks: configure_sharding.yml
@@ -100,10 +100,10 @@
   include_tasks: mms-agent.yml
   when: 
     - mongodb_mms_api_key | length > 0
-  tags: [mongodb, mongos, mongodb-mms, mongos-mms]
+  tags: [mongodb, mongos, mongodb-mms]
 
-- name: Include Node-Exporter Installation Tasks
+- name: Include MongoDB Prometheus Exporter Installation Tasks
   include_tasks: mongodb-exporter.yaml
   when: 
     - mongodb_exporter_enabled == 'true'
-  tags: [mongodb, mongos, mongodb-exporter, mongos-exporter]
+  tags: [mongodb, mongos, mongodb-exporter]
