@@ -1,15 +1,8 @@
 ---
 # Constant vars
 
-#----- Connection vars -----#
-ansible_become: true
-ansible_become_user: root
-ansible_host_key_checking: false
-ansible_python_interpreter: /usr/bin/python3
-
 vault_token: "{{ lookup('env','VAULT_TOKEN') }}"
 vault_url: "{{ lookup('env','VAULT_ADDR') }}"
-#----- Connection vars -----#
 
 os: "linux"
 bin_arch: "amd64"
@@ -30,3 +23,14 @@ mongodb_apt_key_id:
 ## Sharding options
 mongodb_sharding_enabled: "{{ true if (mongodb_config_host_group in groups.keys() or mongos_host_group in groups.keys()) else false }}"
 mongodb_sharding_role: "{{ 'shardsvr' if mongodb_sharding_host_group in mongodb_main_group else 'configsvr' if mongodb_main_group == mongodb_config_host_group else '' }}"
+
+mongodb_net_ssl_PEMKeyFile_path: "{{ mongodb_net_tls_certificateKeyFile_path }}"
+mongodb_net_ssl_CAFile_path: "{{ mongodb_net_tls_CAFile_path }}"
+mongodb_net_ssl_CRLFile_path: "{{ mongodb_net_tls_CRLFile_path }}"
+mongodb_net_ssl_clusterFile_path: "{{ mongodb_net_tls_clusterFile_path }}"
+mongodb_net_ssl_clusterCAFile_path: "{{ mongodb_net_tls_clusterCAFile_path }}"
+mongodb_net_tls_certificateKeyFile_path: /etc/ssl/mongodb.pem
+mongodb_net_tls_CAFile_path: /etc/ssl/mongodb-ca.pem
+mongodb_net_tls_CRLFile_path: /etc/ssl/mongodb-crl.pem
+mongodb_net_tls_clusterFile_path: /etc/ssl/mongodb-cluster.pem
+mongodb_net_tls_clusterCAFile_path: /etc/ssl/mongodb-cluster-ca.pem

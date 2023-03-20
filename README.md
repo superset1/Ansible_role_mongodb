@@ -1,7 +1,7 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.4.0
+Version v1.5.0
 
 ## Content
 ------------
@@ -43,20 +43,13 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.4.0
-- Added ability to delete specific user from database
-- Added ability to update specific user password in the database
-- Added enabling sharding in the databases using the `mongodb_sharding_databases` list
-- Deleted deprecated variable `mongodb_replication_enabled` from examples
-- Disabled `restart` of running MongoDB and Mongos services without tags `mongodb-force-restart, mongos-force-restart` (`start` by default)
-- Disabled `restart` of all servers at once, now one by one
-- Fixed systemd unit: added RestartSec=5s, changed Restart=on-failure to properly restart
-- Fixed users creation task: normal users are no longer created on MongoDB shards, but only created on config servers
-- Made variable `mongodb_master` optional (1st server will be master by default)
-- Made `mongodb_users` user list more clear
-- Set `mongodb_replication_oplogsize: 4096` by default
-- Updated MongoDB Prometheus Exporter to version `0.37.0` with the exception of MongoDB Arbiter (it has `0.11.2`)
-- Updated README: added examples
+### What's new in v1.5.0
+- Added SSL/TLS support for MongoDB Standalone, Cluster and Sharding
+- Deleted connection variables
+- Fixed Mongodb root user existence check
+- Fixed user creation tasks if master was switched
+- Updated validation tasks
+- Updated README: added examples with TLS
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -65,6 +58,7 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Supports replicaset
 - Supports sharding
 - Supports arbiter
+- Supports SSL/TLS
 - Idempotency: the role does not reload the working database
 - Able to remove everything related to MongoDB from the server
 
@@ -84,6 +78,10 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
   - `mongocfg_servers` for sharded cluster (config servers)
   - `mongos_servers` for sharded cluster (mongos or in other words router servers)
   - `mongo_shard_[0-9]` for sharded cluster (replicaset shards)
+- set required values for keys in `mongodb_net_tls_config` dict, when `mongodb_net_tls_enabled: true`
+  - `mode`
+  - `certificateKeyFileContent` or `certificateSelector`
+  - `CAFileContent`
 
 ### Tags
 - mongodb (main tag for all mongodb tasks | optional tag)
@@ -173,9 +171,42 @@ mongodb_net_http_enabled: false                  # Enable http interface
 mongodb_net_ipv6: false                          # Enable IPv6 support (disabled by default)
 mongodb_net_maxconns: 65536                      # Max number of simultaneous connections
 mongodb_net_port: 27017                          # Specify port number
-mongodb_net_ssl_enabled: false                   # Enable or disable ssl connections
-mongodb_net_ssl_mode: ""                         # Set the ssl mode (requireSSL / preferSSL / allowSSL / disabled)
-mongodb_net_ssl_pemfile: ""                      # Location of the pemfile to use for ssl
+mongodb_net_ssl_enabled: false                   # Enable or disable SSL connections (mongodb_net_ssl_enabled and mongodb_net_tls_enabled options are mutually exclusive. You can only specify one)
+mongodb_net_ssl_config:                          # MongoDB SSL config is used if MongoDB version < 4.2
+    mode: "" # <requireSSL / preferSSL / allowSSL / disabled> Enables SSL used for all network connections. The argument to the net.ssl.mode setting can be only one.
+    certificateSelector: "" # Specifies a certificate property in order to select a matching certificate from the operating system's certificate store to use for TLS/SSL (net.ssl.PEMKeyFile and net.ssl.certificateSelector options are mutually exclusive. You can only specify one).
+    PEMKeyFileContent: "" # The .pem content with both the SSL certificate and key (net.ssl.PEMKeyFile and net.ssl.certificateSelector options are mutually exclusive. You can only specify one).
+    PEMKeyPassword: "" # The password to de-crypt the certificate-key file (i.e. PEMKeyFile). Use the net.ssl.PEMKeyPassword option only if the certificate-key file is encrypted. In all cases, the mongos or mongod will redact the password from all logging and reporting output.
+    CAFileContent: "" # The .pem content with the root certificate chain from the Certificate Authority.
+    CRLFileContent: "" # The .pem content with the Certificate Revocation List.
+    clusterCertificateSelector: "" # Specifies a certificate property to select a matching certificate from the operating system's secure certificate store to use for internal x.509 membership authentication (net.ssl.clusterFile and net.ssl.clusterCertificateSelector options are mutually exclusive. You can only specify one).
+    clusterFileContent: "" # The .pem content with the x.509 certificate-key file for membership authentication for the cluster or replica set (net.ssl.clusterFile and net.ssl.clusterCertificateSelector options are mutually exclusive. You can only specify one).
+    clusterPassword: "" # The password to de-crypt the x.509 certificate-key file specified with --sslClusterFile. Use the net.ssl.clusterPassword option only if the certificate-key file is encrypted. In all cases, the mongos or mongod will redact the password from all logging and reporting output.
+    clusterCAFileContent: "" # The .pem content with the root certificate chain from the Certificate Authority used to validate the certificate presented by a client establishing a connection. net.ssl.clusterCAFile requires that net.ssl.CAFile is set.
+    allowConnectionsWithoutCertificates: # <true|false> For clients that don't provide certificates, mongod or mongos encrypts the TLS/SSL connection, assuming the connection is successfully made.
+    allowInvalidCertificates: # <true|false> Enable or disable the validation checks for SSL certificates on other servers in the cluster and allows the use of invalid certificates to connect.
+    allowInvalidHostnames: # <true|false> When net.ssl.allowInvalidHostnames is true, MongoDB disables the validation of the hostnames in TLS/SSL certificates, allowing mongod to connect to MongoDB instances if the hostname their certificates do not match the specified hostname. 
+    FIPSMode: # <true|false> Enable or disable the use of the FIPS mode of the SSL library for the mongos or mongod. Your system must have a FIPS compliant library to use the net.ssl.FIPSMode option.
+    disabledProtocols: "" # <TLS1_0 / TLS1_1 / TLS1_2 / none> Prevents a MongoDB server running with TLS/SSL from accepting incoming connections that use a specific protocol or protocols. To specify multiple protocols, use a comma separated list of protocols.
+  
+mongodb_net_tls_enabled: false                   # Enable or disable TLS connections (mongodb_net_ssl_enabled and mongodb_net_tls_enabled options are mutually exclusive. You can only specify one)
+mongodb_net_tls_config:                          # MongoDB TLS config is used if MongoDB version >= 4.2
+  mode: "" # <requireTLS / preferTLS / allowTLS / disabled> Enables TLS used for all network connections. The argument to the net.tls.mode setting can be only one.
+  certificateSelector: "" # Specifies a certificate property in order to select a matching certificate from the operating system's certificate store to use for TLS/SSL (net.tls.certificateKeyFile and net.tls.certificateSelector options are mutually exclusive. You can only specify one).
+  certificateKeyFileContent: "" # The .pem content with both the TLS certificate and key (net.tls.certificateKeyFile and net.tls.certificateSelector options are mutually exclusive. You can only specify one).
+  certificateKeyFilePassword: "" # The password to de-crypt the certificate-key file (i.e. certificateKeyFile). Use the net.tls.certificateKeyFilePassword option only if the certificate-key file is encrypted. In all cases, the mongos or mongod will redact the password from all logging and reporting output.
+  CAFileContent: "" # The .pem content with the root certificate chain from the Certificate Authority.
+  CRLFileContent: "" # The .pem content with the Certificate Revocation List.
+  clusterCertificateSelector: "" # Specifies a certificate property to select a matching certificate from the operating system's secure certificate store to use for internal x.509 membership authentication (net.tls.clusterFile and net.tls.clusterCertificateSelector options are mutually exclusive. You can only specify one).
+  clusterFileContent: "" # The .pem content with the x.509 certificate-key file for membership authentication for the cluster or replica set (net.tls.clusterFile and net.tls.clusterCertificateSelector options are mutually exclusive. You can only specify one).
+  clusterPassword: "" # The password to de-crypt the x.509 certificate-key file specified with --sslClusterFile. Use the net.tls.clusterPassword option only if the certificate-key file is encrypted. In all cases, the mongos or mongod will redact the password from all logging and reporting output.
+  clusterCAFileContent: "" # The .pem content with the root certificate chain from the Certificate Authority used to validate the certificate presented by a client establishing a connection. net.tls.clusterCAFile requires that net.tls.CAFile is set.
+  allowConnectionsWithoutCertificates: # <true|false> For clients that don't provide certificates, mongod or mongos encrypts the TLS/SSL connection, assuming the connection is successfully made.
+  allowInvalidCertificates: # <true|false> Enable or disable the validation checks for TLS certificates on other servers in the cluster and allows the use of invalid certificates to connect.
+  allowInvalidHostnames: # <true|false> When net.tls.allowInvalidHostnames is true, MongoDB disables the validation of the hostnames in TLS certificates, allowing mongod to connect to MongoDB instances if the hostname their certificates do not match the specified hostname. 
+  FIPSMode: # <true|false> Enable or disable the use of the FIPS mode of the TLS library for the mongos or mongod. Your system must have a FIPS compliant library to use the net.tls.FIPSMode option.
+  disabledProtocols: "" # <TLS1_0 / TLS1_1 / TLS1_2 / none> Prevents a MongoDB server running with TLS from accepting incoming connections that use a specific protocol or protocols. To specify multiple protocols, use a comma separated list of protocols.
+  logVersions: "" # <TLS1_0 / TLS1_1 / TLS1_2 / TLS1_3> Instructs mongos or mongod to log a message when a client connects using a specified TLS version. Specify either a single TLS version or a comma-separated list of multiple TLS versions.
 
 ## ProcessManagement options
 # Fork server process
@@ -244,7 +275,7 @@ mongodb_replication_reconfigure: false                                          
 
 ## Sharding options
 mongodb_sharding_state: "present"                                                       # Adding replicaset to sharding the cluster
-mongodb_sharding_databases: []                                                          # List of databases to run command sh.enableSharding()
+mongodb_sharded_databases: []                                                          # List of databases to run command sh.enableSharding()
 mongodb_sharding_host_group: "mongo_shard_"                                             # Prefix for shards group in the hosts file
 
 ## Mongocfg options
@@ -323,15 +354,12 @@ mongodb_oplog_users: {} # Optional: If you want to add multiple oplog users
   #   state: "" # Optional: present|absent (Default: present)
   #   update_password: false # Optional: true|false (Default: false)
 
-# Set parameter config
-mongodb_set_parameters:
-
 # Custom config options
-mongodb_config:
+mongodb_config: {}
 
 # MongoDB prometheus exporter
 mongodb_exporter_user: "mongodb-exporter"
-mongodb_exporter_group: "{{ mongodb_exporter_user }}"
+mongodb_exporter_group: "{{ mongodb_group if mongodb_main_group != mongos_host_group else mongos_group if mongodb_main_group == mongos_host_group else mongodb_exporter_user }}"
 mongodb_exporter_enabled: "true"
 mongodb_exporter_version: "0.37.0"
 mongodb_exporter_version_arbiter: "0.11.2"
@@ -365,6 +393,12 @@ www.host1.com
 ### Example var file without replication with required variables
 ```yaml
 mongodb_version: "6.0"
+
+mongodb_net_tls_enabled: true # Optional: true|false (Default: false)
+mongodb_net_tls_config:
+  mode: "requireTLS"
+  certificateKeyFileContent: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:certificateKeyFileContent token={{ vault_token }} url={{ vault_url }}') }}"
+  CAFileContent: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:CAFileContent token={{ vault_token }} url={{ vault_url }}') }}"
 
 mongodb_user_admin_password: "mongoadm"
 mongodb_root_admin_password: "mongoroot"
@@ -402,6 +436,12 @@ www.host5.com mongodb_arbiter=True # Optional variable if you need arbiter
 ### Example var file for replication
 ```yaml
 mongodb_version: "6.0"
+
+mongodb_net_tls_enabled: true # Optional: true|false (Default: false)
+mongodb_net_tls_config:
+  mode: "requireTLS"
+  certificateKeyFileContent: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:certificateKeyFileContent token={{ vault_token }} url={{ vault_url }}') }}"
+  CAFileContent: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:CAFileContent token={{ vault_token }} url={{ vault_url }}') }}"
 
 mongodb_root_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_root_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
 mongodb_user_admin_password: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:mongodb_user_admin_password token={{ vault_token }} url={{ vault_url }}') }}"
@@ -451,7 +491,7 @@ www.mongoshard-1-3.com
 [mongo_shard_02]
 www.mongoshard-2-1.com
 www.mongoshard-2-2.com
-www.mongoshard-2-3.com mongodb_arbiter=True # Optional variable if you need arbiter
+www.mongoshard-2-3.com
 
 [mongo_sharding_cluster:children]
 mongocfg_servers
@@ -464,7 +504,13 @@ mongo_shard_02
 ```yaml
 mongodb_version: "6.0"
 
-mongodb_sharding_databases: # List of databases to run command sh.enableSharding()
+mongodb_net_tls_enabled: true # Optional: true|false (Default: false)
+mongodb_net_tls_config:
+  mode: "requireTLS"
+  certificateKeyFileContent: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:certificateKeyFileContent token={{ vault_token }} url={{ vault_url }}') }}"
+  CAFileContent: "{{ lookup('hashi_vault', 'secret=services/test-namespace/prd/mongodb:CAFileContent token={{ vault_token }} url={{ vault_url }}') }}"
+
+mongodb_sharded_databases: # List of databases to run command sh.enableSharding()
   - user_database_1
   - user_database_2
 

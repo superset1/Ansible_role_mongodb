@@ -18,14 +18,34 @@
     - mongodb_main_group == mongos_host_group
   tags: [mongos, mongos-sharding]
 
-- name: "Add the Replicaset Shard to Mongos{{ ' and Enable Sharding for Databases: ' + mongodb_sharding_databases | join(', ') if mongodb_sharding_databases is defined and mongodb_sharding_databases | length > 0 else '' }}"
+- name: "Add the Replicaset Shard to Mongos{{ ' and Enable Sharding for Databases: ' + mongodb_sharded_databases | join(', ') if mongodb_sharded_databases is defined and mongodb_sharded_databases | length > 0 else '' }}"
   community.mongodb.mongodb_shard:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
+    login_host: "{{ inventory_hostname }}"
+    login_port: "{{ mongos_net_port }}"
+    login_database: "{{ mongodb_login_database }}"
     shard: "{{ item + '/' + shard_names[item] }}"
     state: "{{ mongodb_sharding_state }}"
-    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
-    sharded_databases: "{{ (mongodb_sharding_databases is defined and mongodb_sharding_databases | length > 0) | ternary(mongodb_sharding_databases, omit) }}"
+    tls: "{{ ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is regex('requireSSL|preferSSL')) or
+              (mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is regex('requireTLS|preferTLS'))) }}"
+    tlsCertificateKeyFile:
+           "{{ mongodb_net_ssl_PEMKeyFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0) else
+               mongodb_net_tls_certificateKeyFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0) else omit }}"
+    tlsCertificateKeyFilePassword:
+           "{{ mongodb_net_ssl_config['PEMKeyPassword'] if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyPassword'] is defined and mongodb_net_ssl_config['PEMKeyPassword']|length > 0) else
+               mongodb_net_tls_config['certificateKeyFilePassword'] if (mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0) else omit }}"
+    tlsCAFile:
+           "{{ mongodb_net_ssl_CAFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0) else
+               mongodb_net_tls_CAFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0) else omit }}"
+    ssl_crlfile:
+           "{{ mongodb_net_ssl_CRLFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0) else
+               mongodb_net_tls_CRLFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0) else omit }}"
+    tlsAllowInvalidCertificates:
+          "{{ 'CERT_NONE' if ((not mongodb_net_ssl_enabled) and (not mongodb_net_tls_enabled)) else
+              'CERT_OPTIONAL' if ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates']) or (mongodb_net_tls_enabled and mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'])) else
+              'CERT_REQUIRED' }}"
+    sharded_databases: "{{ (mongodb_sharded_databases is defined and mongodb_sharded_databases | length > 0) | ternary(mongodb_sharded_databases, omit) }}"
   with_items: "{{ shard_names }}"
   when:
     - mongodb_main_group == mongos_host_group

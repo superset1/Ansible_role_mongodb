@@ -95,3 +95,9 @@
     daemon_reload: true
     state: restarted
   when: ansible_service_mgr == "systemd"
+
+- name: Wait When MongoDB-Exporter is Started
+  wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 9216
+    timeout: 60

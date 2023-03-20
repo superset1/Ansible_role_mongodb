@@ -1,6 +1,6 @@
 ---
 
-- name: Fail When Used Wrong mongodb_version Variable with RHEL / CentOS / Oracle
+- name: Fail When Using Wrong mongodb_version Variable with RHEL / CentOS / Oracle
   fail:
     msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for RedHat family"
   when:

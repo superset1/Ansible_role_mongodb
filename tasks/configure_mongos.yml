@@ -64,6 +64,94 @@
   when: mongodb_main_group == mongos_host_group
   tags: [mongos, mongos-configure]
 
+- block:
+  - name: Create `mongodb-ca.pem` File With the Root Certificate Chain From the Certificate Authority
+    copy:
+      dest:    "{{ mongodb_net_ssl_CAFile_path if mongodb_net_ssl_enabled and mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0 else
+                  mongodb_net_tls_CAFile_path if mongodb_net_tls_enabled and mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0 else omit }}"
+      content: "{{ mongodb_net_ssl_config['CAFileContent'] if mongodb_net_ssl_enabled and mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0 else
+                  mongodb_net_tls_config['CAFileContent'] if mongodb_net_tls_enabled and mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0 else omit }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0440
+    notify:
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
+    tags: [mongos, mongos-configure]
+
+  - name: Create `mongodb.pem` File that Contains Both the TLS Certificate and Key
+    copy:
+      dest:    "{{ mongodb_net_ssl_PEMKeyFile_path if mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0 else
+                  mongodb_net_tls_certificateKeyFile_path if mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0 else omit }}"
+      content: "{{ mongodb_net_ssl_config['PEMKeyFileContent'] if mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0 else
+                  mongodb_net_tls_config['certificateKeyFileContent'] if mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0 else omit }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0440
+    notify:
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
+    tags: [mongos, mongos-configure]
+
+  - name: Create `mongodb-crl.pem` File With the Certificate Revocation List
+    copy:
+      dest:    "{{ mongodb_net_ssl_CRLFile_path if mongodb_net_ssl_enabled and mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0 else
+                  mongodb_net_tls_CRLFile_path if mongodb_net_tls_enabled and mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0 else omit }}"
+      content: "{{ mongodb_net_ssl_config['CRLFileContent'] if mongodb_net_ssl_enabled and mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0 else
+                  mongodb_net_tls_config['CRLFileContent'] if mongodb_net_tls_enabled and mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0 else omit }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0440
+    notify:
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
+    when:
+      - ((mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0) or
+        (mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0))
+    tags: [mongos, mongos-configure]
+
+  - name: Create `mongodb-cluster-ca.pem` File With the Root Certificate Chain From the Certificate Authority to Validate the Certificate Presented by a Client Establishing a Connection
+    copy:
+      dest:    "{{ mongodb_net_ssl_clusterCAFile_path if mongodb_net_ssl_enabled and mongodb_net_ssl_config['clusterCAFileContent'] is defined and mongodb_net_ssl_config['clusterCAFileContent']|length > 0 else
+                  mongodb_net_tls_clusterCAFile_path if mongodb_net_tls_enabled and mongodb_net_tls_config['clusterCAFileContent'] is defined and mongodb_net_tls_config['clusterCAFileContent']|length > 0 else omit }}"
+      content: "{{ mongodb_net_ssl_config['clusterCAFileContent'] if mongodb_net_ssl_enabled and mongodb_net_ssl_config['clusterCAFileContent'] is defined and mongodb_net_ssl_config['clusterCAFileContent']|length > 0 else
+                  mongodb_net_tls_config['clusterCAFileContent'] if mongodb_net_tls_enabled and mongodb_net_tls_config['clusterCAFileContent'] is defined and mongodb_net_tls_config['clusterCAFileContent']|length > 0 else omit }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0440
+    notify:
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
+    when:
+      - ((mongodb_net_ssl_config['clusterCAFileContent'] is defined and mongodb_net_ssl_config['clusterCAFileContent']|length > 0) or
+        (mongodb_net_tls_config['clusterCAFileContent'] is defined and mongodb_net_tls_config['clusterCAFileContent']|length > 0))
+    tags: [mongos, mongos-configure]
+
+  - name: Create `mongodb-cluster.pem` File With the x.509 Certificate-Key File for Membership Authentication for the Cluster or Replicaset
+    copy:
+      dest:    "{{ mongodb_net_ssl_clusterFile_path if mongodb_net_ssl_enabled and mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_ssl_config['clusterFileContent']|length > 0 else
+                  mongodb_net_tls_clusterFile_path if mongodb_net_tls_enabled and mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent']|length > 0 else omit }}"
+      content: "{{ mongodb_net_ssl_config['clusterFileContent'] if mongodb_net_ssl_enabled and mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_ssl_config['clusterFileContent']|length > 0 else
+                  mongodb_net_tls_config['clusterFileContent'] if mongodb_net_tls_enabled and mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent']|length > 0 else omit }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0440
+    notify:
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+      - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
+    when:
+      - ((mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_ssl_config['clusterFileContent']|length > 0) or
+        (mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent']|length > 0))
+    tags: [mongos, mongos-configure]
+    
+  when: mongodb_net_ssl_enabled or mongodb_net_tls_enabled
+  tags: [mongos, mongos-configure]
+
 - name: Configure Mongos
   template:
     src: mongos.conf.j2

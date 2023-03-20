@@ -16,7 +16,7 @@ mongoshard-1-3
 [mongo_shard_02]
 mongoshard-2-1
 mongoshard-2-2
-mongoshard-2-3 mongodb_arbiter=True # Optional variable if you need arbiter
+mongoshard-2-3
 
 [mongo_sharding_cluster:children]
 mongocfg_servers

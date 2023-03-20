@@ -1,109 +1,111 @@
 ---
 
-- name: Set ansible_distribution_release to Buster (Debian 10) When Bullseye (Debian 11)
-  set_fact:
-    ansible_distribution_release: "buster"
-  when: ansible_distribution_release == "bullseye"
-  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
-
 - name: Set Main Group For Hosts
   set_fact:
     mongodb_main_group: "{{ group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first }}"
   tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongodb-force-restart, mongos-configure, mongos-logrotate, mongos-force-restart, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongodb-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
 
-- name: Include OS-specific Variables
-  include_vars: "{{ item }}"
-  with_first_found:
-    - "{{ ansible_distribution_release }}.yml"
-    - "{{ ansible_distribution }}.yml"
-    - "{{ ansible_os_family }}.yml"
-  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
+- block:
+  - name: Set ansible_distribution_release to Buster (Debian 10) When Bullseye (Debian 11) and MongoDB Version < 5.0.8
+    set_fact:
+      ansible_distribution_release: "buster"
+    when:
+      - ansible_distribution_release == "bullseye"
+      - mongodb_major_version is version("5.0.8", "<")
+    tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
 
-- name: Set 'mongodb_master' to 1st Host of Replicaset if It's Not Defined
-  set_fact:
-    mongodb_master: true
-  with_items:
-    - "{{ mongodb_main_group }}"
-  when:
-    - mongodb_replication_enabled
-    - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_master', 'defined')
-    - inventory_hostname == groups[mongodb_main_group][0]
-    - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+  - name: Include OS-specific Variables
+    include_vars: "{{ item }}"
+    with_first_found:
+      - "{{ ansible_distribution_release }}.yml"
+      - "{{ ansible_distribution }}.yml"
+      - "{{ ansible_os_family }}.yml"
+    tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-uninstall, mongos-uninstall, mongodb-dbdelete]
 
-- name: Include Validation Tasks
-  include_tasks: "validate.yml"
-  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-exporter]
+  - name: Set 'mongodb_master' to 1st Host of Replicaset if It's Not Defined, and Host is Not Arbiter
+    set_fact:
+      mongodb_master: true
+    when:
+      - mongodb_replication_enabled
+      - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')
+      - inventory_hostname == (hostvars|dict2items|selectattr('value.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('value.mongodb_arbiter', 'undefined')|map(attribute='value.inventory_hostname')|list)[0]
+      - mongodb_main_group != mongos_host_group
+    tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
-- name: Include MongoDB and MongoDB-Exporter Remove Tasks
-  include_tasks: "{{ item }}"
-  with_first_found:
-    - "uninstall.{{ ansible_distribution_release | lower }}.yml"
-    - "uninstall.{{ ansible_distribution | lower }}.yml"
-    - "uninstall.{{ ansible_os_family | lower }}.yml"
-  tags: [never, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
+  - name: Include Validation Tasks
+    include_tasks: "validate.yml"
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-exporter]
 
-- name: Include Installation Tasks
-  include_tasks: "{{ item }}"
-  with_first_found:
-    - "install.{{ ansible_distribution | lower }}.yml"
-    - "install.{{ ansible_os_family | lower }}.yml"
-  tags: [mongodb, mongos, mongodb-install, mongos-install]
+  - name: Include MongoDB and MongoDB-Exporter Remove Tasks
+    include_tasks: "{{ item }}"
+    with_first_found:
+      - "uninstall.{{ ansible_distribution_release | lower }}.yml"
+      - "uninstall.{{ ansible_distribution | lower }}.yml"
+      - "uninstall.{{ ansible_os_family | lower }}.yml"
+    tags: [never, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
 
-- name: Include MongoDB Configuration Tasks
-  include_tasks: configure_mongodb.yml
-  when: mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-configure, mongodb-logrotate, mongodb-force-restart]
+  - name: Include Installation Tasks
+    include_tasks: "{{ item }}"
+    with_first_found:
+      - "install.{{ ansible_distribution | lower }}.yml"
+      - "install.{{ ansible_os_family | lower }}.yml"
+    tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Set Arbiter Index if 'mongodb_arbiter' is Defined
-  set_fact: 
-    mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
-  with_items:
-    - "{{ mongodb_main_group }}"
-  when:
-    - mongodb_replication_enabled
-    - hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
-    - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-replicaset, mongos-sharding]
+  - name: Include MongoDB Configuration Tasks
+    include_tasks: configure_mongodb.yml
+    when: mongodb_main_group != mongos_host_group
+    tags: [mongodb, mongodb-configure, mongodb-logrotate, mongodb-force-restart]
 
-- name: Include Replication Tasks for Master
-  include_tasks: configure_replicaset.yml
-  when:
-    - mongodb_replication_enabled
-    - mongodb_master is defined
-    - mongodb_master
-    - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
+  - name: Set Arbiter Index if 'mongodb_arbiter' is Defined
+    set_fact:
+      mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
+    with_items:
+      - "{{ mongodb_main_group }}"
+    when:
+      - mongodb_replication_enabled
+      - hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
+      - mongodb_main_group != mongos_host_group
+    tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
-- name: Include Users Creation Tasks {{ 'for Master' if mongodb_replication_enabled else '' }}
-  include_tasks: create_users.yml
-  when:
-    - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
-    - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+  - name: Include Replication Tasks for Master
+    include_tasks: configure_replicaset.yml
+    when:
+      - mongodb_replication_enabled
+      - mongodb_master is defined
+      - mongodb_master
+      - mongodb_main_group != mongos_host_group
+    tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
 
-- name: Include Mongos Configuration Tasks
-  include_tasks: configure_mongos.yml
-  when: 
-    - mongodb_main_group == mongos_host_group
-    - mongodb_sharding_enabled
-  tags: [mongos, mongos-configure, mongos-logrotate, mongos-force-restart]
+  - name: Include Users Creation Tasks {{ 'for Master' if mongodb_replication_enabled else '' }}
+    include_tasks: create_users.yml
+    when:
+      - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
+      - mongodb_main_group != mongos_host_group
+    tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
-- name: Include Mongos Sharding Configuration Tasks
-  include_tasks: configure_sharding.yml
-  when: 
-    - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
-    - mongodb_sharding_enabled
-  tags: [mongos, mongos-sharding]
+  - name: Include Mongos Configuration Tasks
+    include_tasks: configure_mongos.yml
+    when:
+      - mongodb_main_group == mongos_host_group
+      - mongodb_sharding_enabled
+    tags: [mongos, mongos-configure, mongos-logrotate, mongos-force-restart]
 
-- name: Include MMS Agent Configuration
-  include_tasks: mms-agent.yml
-  when: 
-    - mongodb_mms_api_key | length > 0
-  tags: [mongodb, mongos, mongodb-mms]
+  - name: Include Mongos Sharding Configuration Tasks
+    include_tasks: configure_sharding.yml
+    when:
+      - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
+      - mongodb_sharding_enabled
+    tags: [mongos, mongos-sharding]
 
-- name: Include MongoDB Prometheus Exporter Installation Tasks
-  include_tasks: mongodb-exporter.yaml
-  when: 
-    - mongodb_exporter_enabled == 'true'
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Include MMS Agent Configuration
+    include_tasks: mms-agent.yml
+    when:
+      - mongodb_mms_api_key | length > 0
+    tags: [mongodb, mongos, mongodb-mms]
+
+  - name: Include MongoDB Prometheus Exporter Installation Tasks
+    include_tasks: mongodb-exporter.yaml
+    when: 
+      - mongodb_exporter_enabled == 'true'
+    tags: [mongodb, mongos, mongodb-exporter]
+  when: mongodb_main_group|regex_replace('[0-9]*$', '') in mongodb_valid_groups

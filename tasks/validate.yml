@@ -1,37 +1,121 @@
 ---
+- block:
+  - name: Check Only One Variable 'mongodb_net_ssl_enabled' or 'mongodb_net_tls_enabled' is True or Both are False
+    assert:
+      that:
+        - (not (mongodb_net_ssl_enabled and mongodb_net_tls_enabled))
+      fail_msg: "Use only one variable mongodb_net_ssl_enabled or mongodb_net_tls_enabled or set mongodb_net_(ssl|tls)_enabled to False!"
+      quiet: true
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 
-- name: Check Version MongoDB if Variable mongodb_net_ssl_enabled is True
-  assert:
-    that:
-      - (mongodb_net_ssl_enabled and mongodb_major_version is version("4.2", "<")) or (not mongodb_net_ssl_enabled)
-    fail_msg: 'MongoDB 4.2 deprecates ssl options in favor of tls options with identical functionality!'
-    quiet: true
+  - name: Check Version MongoDB if Variable 'mongodb_net_ssl_enabled' or 'mongodb_net_tls_enabled' is True
+    assert:
+      that:
+        - ((mongodb_net_ssl_enabled and mongodb_major_version is version("4.2", "<")) or (not mongodb_net_ssl_enabled)) and
+          ((mongodb_net_tls_enabled and mongodb_major_version is version("4.2", ">=")) or (not mongodb_net_tls_enabled))
+      fail_msg: "Use mongodb_net_ssl_enabled with MongoDB version < 4.2, but mongodb_net_tls_enabled with MongoDB version >= 4.2 or set mongodb_net_(ssl|tls)_enabled to False!"
+      quiet: true
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  - name: Check Value of Variable 'mongodb_net_(ssl|tls)_config["mode"]' if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+    assert:
+      that:
+        - ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is regex("requireSSL|preferSSL|allowSSL|disabled")) or (not mongodb_net_ssl_enabled)) and
+          ((mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is regex("requireTLS|preferTLS|allowTLS|disabled")) or (not mongodb_net_tls_enabled))
+      fail_msg: "Set mongodb_net_(ssl|tls)_config['mode'] to (require(SSL|TLS)/prefer(SSL|TLS)/allow(SSL|TLS)/disabled) or set mongodb_net_(ssl|tls)_enabled to False!"
+      quiet: true
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  - name: Check Only One Option 'mongodb_net_(ssl|tls)_config["PEMKeyFileContent|certificateKeyFile"]' or 'mongodb_net_(ssl|tls)_config["certificateSelector"]' is Defined if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+    assert:
+      that:
+        - (not (mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['certificateSelector'] is defined)) or
+          (not (mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateSelector'] is defined))
+      fail_msg: "Use only one option mongodb_net_(ssl|tls)_config['PEMKeyFileContent|certificateKeyFile'] or mongodb_net_(ssl|tls)_config['certificateSelector'], they are mutually exclusive, or set mongodb_net_(ssl|tls)_enabled to False!"
+      quiet: true
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  - name: Check Value of Variable 'mongodb_net_(ssl|tls)_config["certificateSelector"]' if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+    assert:
+      that:
+        - ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['certificateSelector'] is defined and mongodb_net_ssl_config['certificateSelector']|length > 0) or (not mongodb_net_ssl_enabled)) and
+          ((mongodb_net_tls_enabled and mongodb_net_tls_config['certificateSelector'] is defined and mongodb_net_tls_config['certificateSelector']|length > 0) or (not mongodb_net_tls_enabled))
+      fail_msg: "Fill in the value of variable mongodb_net_(ssl|tls)_config['certificateSelector'] or set mongodb_net_(ssl|tls)_enabled to False"
+      quiet: true
+    when:
+      - mongodb_net_ssl_config['PEMKeyFileContent'] is undefined
+      - mongodb_net_tls_config['certificateKeyFileContent'] is undefined
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  - name: Check Value of Variable 'mongodb_net_(ssl|tls)_config["PEMKeyFileContent|certificateKeyFileContent"]' if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+    assert:
+      that:
+        - ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0) or (not mongodb_net_ssl_enabled)) and
+          ((mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0) or (not mongodb_net_tls_enabled))
+      fail_msg: "Fill in the value of variable mongodb_net_(ssl|tls)_config['PEMKeyFileContent|certificateKeyFileContent'] or set mongodb_net_(ssl|tls)_enabled to False"
+      quiet: true
+    when:
+     - mongodb_net_ssl_config['certificateSelector'] is undefined
+     - mongodb_net_tls_config['certificateSelector'] is undefined
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  - name: Check Value of Variable 'mongodb_net_(ssl|tls)_config["CAFileContent"]' if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+    assert:
+      that:
+        - ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0) or (not mongodb_net_ssl_enabled)) and
+          ((mongodb_net_tls_enabled and mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0) or (not mongodb_net_tls_enabled))
+      fail_msg: "Fill in the value of variable mongodb_net_(ssl|tls)_config['CAFileContent'] or set mongodb_net_(ssl|tls)_enabled to False!"
+      quiet: true
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  - name: Check Only One Option 'mongodb_net_(ssl|tls)_config["clusterFileContent"]' or 'mongodb_net_(ssl|tls)_config["clusterCertificateSelector"]' is Defined if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+    assert:
+      that:
+        - (not (mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_ssl_config['clusterCertificateSelector'] is defined)) or
+          (not (mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterCertificateSelector'] is defined))
+      fail_msg: "Use only one option mongodb_net_(ssl|tls)_config['clusterFileContent'] or mongodb_net_(ssl|tls)_config['clusterCertificateSelector'], they are mutually exclusive, or set mongodb_net_(ssl|tls)_enabled to False!"
+      quiet: true
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  # - name: Check Value of Variable 'mongodb_net_(ssl|tls)_config["clusterCertificateSelector"]' if Variable  'mongodb_net_(ssl|tls)_enabled' is True
+  #   assert:
+  #     that:
+  #       - ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['clusterCertificateSelector'] is defined and mongodb_net_ssl_config['clusterCertificateSelector']|length > 0) or (not mongodb_net_ssl_enabled)) and
+  #         ((mongodb_net_tls_enabled and mongodb_net_tls_config['clusterCertificateSelector'] is defined and mongodb_net_tls_config['clusterCertificateSelector']|length > 0) or (not mongodb_net_tls_enabled))
+  #     fail_msg: "Fill in the value of variable mongodb_net_(ssl|tls)_config['clusterCertificateSelector'] or set mongodb_net_(ssl|tls)_enabled to False"
+  #     quiet: true
+  #   when: (not (mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent'] is defined))
+  #   tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  # - name: Check Value of Variable 'mongodb_net_(ssl|tls)_config["clusterFileContent"]' if Variable 'mongodb_net_(ssl|tls)_enabled' is True
+  #   assert:
+  #     that:
+  #       - ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_ssl_config['clusterFileContent']|length > 0) or (not mongodb_net_ssl_enabled)) and
+  #         ((mongodb_net_tls_enabled and mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent']|length > 0) or (not mongodb_net_tls_enabled))
+  #     fail_msg: "Fill in the value of variable mongodb_net_(ssl|tls)_config['clusterFileContent'] or set mongodb_net_(ssl|tls)_enabled to False"
+  #     quiet: true
+  #   when: (not (mongodb_net_ssl_config['clusterCertificateSelector'] is defined and mongodb_net_tls_config['clusterCertificateSelector'] is defined))
+  #   tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+
+  when: mongodb_net_ssl_enabled or mongodb_net_tls_enabled
   tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
 
-- name: Check Value of Variable mongodb_net_ssl_mode if mongodb_net_ssl_enabled is True
-  assert:
-    that:
-      - (mongodb_net_ssl_enabled and mongodb_net_ssl_mode is regex("requireSSL|preferSSL|preferSSL")) or (not mongodb_net_ssl_enabled)
-    fail_msg: 'Set mongodb_net_ssl_mode to (requireSSL/preferSSL/allowSSL) or set mongodb_net_ssl_mode to False!'
-    quiet: true
-  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
-
-- name: Check the Group {{ mongodb_standalone_host_group }} Exists if Standalone MongoDB
+- name: Check the Group '{{ mongodb_standalone_host_group }}' Exists if Standalone MongoDB
   assert:
     that:
       - groups[mongodb_standalone_host_group] is defined
-    fail_msg: "Create {{ mongodb_standalone_host_group }} group in hosts file and add your servers to it!"
+    fail_msg: "Create '{{ mongodb_standalone_host_group }}' group in hosts file and add your servers to it!"
     quiet: true
   when: 
     - not mongodb_replication_enabled
     - not mongodb_sharding_enabled
   tags: [mongodb, mongodb-configure]
 
-- name: Check the Group {{ mongodb_replication_host_group }} Exists if Replicaset
+- name: Check the Group '{{ mongodb_replication_host_group }}' Exists if Replicaset
   assert:
     that:
       - groups[mongodb_replication_host_group] is defined
-    fail_msg: "Create {{ mongodb_replication_host_group }} group in hosts file and add your servers to it!"
+    fail_msg: "Create '{{ mongodb_replication_host_group }}' group in hosts file and add your servers to it!"
     quiet: true
   when: 
     - mongodb_replication_enabled
@@ -39,11 +123,11 @@
     - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-configure]
 
-- name: Check the Groups '{{ mongodb_sharding_host_group }}[0-9]+' and {{ mongodb_config_host_group }} and {{ mongos_host_group }} Exists if Sharded Cluster
+- name: Check the Groups '{{ mongodb_sharding_host_group }}[0-9]+' and '{{ mongodb_config_host_group }}' and '{{ mongos_host_group }}' Exists if Sharded Cluster
   assert:
     that:
       - mongodb_main_group|regex_replace('[0-9]+$','') in mongodb_valid_groups
-    fail_msg: "Create '{{ mongodb_sharding_host_group }}[0-9]+' and {{ mongodb_config_host_group }} and {{ mongos_host_group }} groups in hosts file and add your servers to it!"
+    fail_msg: "Create '{{ mongodb_sharding_host_group }}[0-9]+' and '{{ mongodb_config_host_group }}' and '{{ mongos_host_group }}' groups in hosts file and add your servers to it!"
     quiet: true
   when: 
     - mongodb_sharding_enabled
@@ -85,17 +169,31 @@
   tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Replicaset
-  community.mongodb.mongodb_status:
+  community.mongodb.mongodb_info:
+    connection_options: "replicaSet={{ mongodb_replication_replset }}"
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "localhost"
+    login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    replica_set: "{{ mongodb_replication_replset }}"
-    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
-    validate: votes
-    poll: 2
-    interval: 1
+    tls: "{{ ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is regex('requireSSL|preferSSL')) or
+              (mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is regex('requireTLS|preferTLS'))) }}"
+    tlsCertificateKeyFile:
+           "{{ mongodb_net_ssl_PEMKeyFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0) else
+               mongodb_net_tls_certificateKeyFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0) else omit }}"
+    tlsCertificateKeyFilePassword:
+           "{{ mongodb_net_ssl_config['PEMKeyPassword'] if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyPassword'] is defined and mongodb_net_ssl_config['PEMKeyPassword']|length > 0) else
+               mongodb_net_tls_config['certificateKeyFilePassword'] if (mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0) else omit }}"
+    tlsCAFile:
+           "{{ mongodb_net_ssl_CAFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0) else
+               mongodb_net_tls_CAFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0) else omit }}"
+    ssl_crlfile:
+           "{{ mongodb_net_ssl_CRLFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0) else
+               mongodb_net_tls_CRLFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0) else omit }}"
+    tlsAllowInvalidCertificates:
+          "{{ 'CERT_NONE' if ((not mongodb_net_ssl_enabled) and (not mongodb_net_tls_enabled)) else
+              'CERT_OPTIONAL' if ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates']) or (mongodb_net_tls_enabled and mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'])) else
+              'CERT_REQUIRED' }}"
   ignore_errors: true
   register: mongodb_root_admin_exist_replicaset
   when:
@@ -110,17 +208,33 @@
   community.mongodb.mongodb_info:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "localhost"
+    login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
-    ssl: "{{ (mongodb_net_ssl_enabled and mongodb_net_ssl_mode == 'requireSSL') | ternary(true, false) }}"
-  async: 3
-  poll: 2
+    tls: "{{ ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is regex('requireSSL|preferSSL')) or
+              (mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is regex('requireTLS|preferTLS'))) }}"
+    tlsCertificateKeyFile:
+           "{{ mongodb_net_ssl_PEMKeyFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0) else
+               mongodb_net_tls_certificateKeyFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0) else omit }}"
+    tlsCertificateKeyFilePassword:
+           "{{ mongodb_net_ssl_config['PEMKeyPassword'] if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['PEMKeyPassword'] is defined and mongodb_net_ssl_config['PEMKeyPassword']|length > 0) else
+               mongodb_net_tls_config['certificateKeyFilePassword'] if (mongodb_net_tls_enabled and mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0) else omit }}"
+    tlsCAFile:
+           "{{ mongodb_net_ssl_CAFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0) else
+               mongodb_net_tls_CAFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0) else omit }}"
+    ssl_crlfile:
+           "{{ mongodb_net_ssl_CRLFile_path if (mongodb_net_ssl_enabled and mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0) else
+               mongodb_net_tls_CRLFile_path if (mongodb_net_tls_enabled and mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0) else omit }}"
+    tlsAllowInvalidCertificates:
+          "{{ 'CERT_NONE' if ((not mongodb_net_ssl_enabled) and (not mongodb_net_tls_enabled)) else
+              'CERT_OPTIONAL' if ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates']) or (mongodb_net_tls_enabled and mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'])) else
+              'CERT_REQUIRED' }}"
   ignore_errors: true
   register: mongodb_root_admin_exist_standalone
   when: 
     - not mongodb_replication_enabled
     - mongodb_main_group != mongos_host_group
+    - mongodb_main_group != 'ungrouped'
   tags: [mongodb, mongodb-create-admin-users, mongodb-exporter]
 
 - name: Set Results of Root User Existence Check

@@ -1,6 +1,6 @@
 ---
 
-- name: Fail When Used Wrong mongodb_version Variable with Debian 8 (Jessie)
+- name: Fail When Using Wrong mongodb_version Variable with Debian 8 (Jessie)
   fail:
     msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' for Debian 8 (Jessie)"
   when:
@@ -10,7 +10,7 @@
     - ansible_distribution_release == 'jessie'
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Fail When Used Wrong mongodb_version Variable with Debian 9 (Stretch)
+- name: Fail When Using Wrong mongodb_version Variable with Debian 9 (Stretch)
   fail:
     msg: "mongodb_version variable should be '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for Debian 9 (Stretch)"
   when:
@@ -20,7 +20,7 @@
     - ansible_distribution_release == 'stretch'
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Fail When Used Wrong mongodb_version Variable with Debian 10 (Buster)
+- name: Fail When Using Wrong mongodb_version Variable with Debian 10 (Buster)
   fail:
     msg: "mongodb_version variable should be '4.2' or '4.4' or '5.0' or '6.0' for Debian 10 (Buster)"
   when:
@@ -30,7 +30,17 @@
     - ansible_distribution_release == 'buster'
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Fail When Used Wrong mongodb_version Variable with Ubuntu 16.04 (Xenial)
+- name: Fail When Using Wrong mongodb_version Variable with Debian 11 (Bullseye)
+  fail:
+    msg: "mongodb_version variable should be '5.0' or '6.0' for Debian 11 (Bullseye)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongos_package == 'mongodb-org-mongos'
+    - mongodb_major_version is not regex("5.0|6.0")
+    - ansible_distribution_release == 'bullseye'
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
+
+- name: Fail When Using Wrong mongodb_version Variable with Ubuntu 16.04 (Xenial)
   fail:
     msg: "mongodb_version variable should be '3.4' or '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for Ubuntu 16.04 (Xenial)"
   when:
@@ -40,7 +50,7 @@
     - ansible_distribution_release == "xenial"
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Fail When Used Wrong mongodb_version Variable with Ubuntu 18.04 (Bionic)
+- name: Fail When Using Wrong mongodb_version Variable with Ubuntu 18.04 (Bionic)
   fail:
     msg: "mongodb_version variable should be '3.6' or '4.0' or '4.2' or '4.4' or '5.0' or '6.0' for Ubuntu 18.04 (Bionic)"
   when:
@@ -50,7 +60,7 @@
     - ansible_distribution_release == "bionic"
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Fail When Used Wrong mongodb_version Variable with Ubuntu 20.04 (Focal)
+- name: Fail When Using Wrong mongodb_version Variable with Ubuntu 20.04 (Focal)
   fail:
     msg: "mongodb_version variable should be '4.4' or '5.0' or '6.0' for Ubuntu 20.04 (Focal)"
   when:
@@ -60,11 +70,11 @@
     - ansible_distribution_release == "focal"
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Fail When Used Wrong ansible_distribution_release
+- name: Fail When Using Wrong ansible_distribution_release
   fail:
-    msg: "ansible_distribution_release should be 'Debian 8 (Jessie)' or 'Debian 9 (Stretch)' or 'Debian 10 (Buster)' or 'Ubuntu 16.04 (Xenial)' or 'Ubuntu 18.04 (Bionic)' or 'Ubuntu 20.04 (Focal)'"
+    msg: "ansible_distribution_release should be 'Debian 8 (Jessie)' or 'Debian 9 (Stretch)' or 'Debian 10 (Buster)' or 'Debian 11 (Bullseye)' or 'Ubuntu 16.04 (Xenial)' or 'Ubuntu 18.04 (Bionic)' or 'Ubuntu 20.04 (Focal)'"
   when:
-    - ansible_distribution_release is not regex("xenial|stretch|buster|bionic|focal")
+    - ansible_distribution_release is not regex("xenial|stretch|buster|bullseye|bionic|focal")
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Disable Transparent Huge Pages on Systemd Systems

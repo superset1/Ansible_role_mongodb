@@ -1,59 +1,149 @@
+#jinja2: lstrip_blocks: "True"
 # {{ ansible_managed }}
 
 net:
   bindIp: {{ mongodb_net_bindip }}
-  {% if mongodb_major_version is version("3.6", "<") -%}
+  {% if mongodb_major_version is version("3.6", "<") %}
   http:
     enabled: {{ mongodb_net_http_enabled | to_nice_json }}
-  {% endif -%}
+  {% endif %}
   ipv6: {{ mongodb_net_ipv6 | to_nice_json }}
   maxIncomingConnections: {{ mongodb_net_maxconns }}
   port: {{ mongodb_net_port }}
-  {% if mongodb_net_ssl_pemfile is defined and mongodb_net_ssl_mode is defined and mongodb_net_ssl_enabled and mongodb_major_version is version("4.2", "<") -%}
+  {% if mongodb_net_ssl_enabled is boolean and mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is defined and mongodb_net_ssl_config['mode']|length > 0 and mongodb_major_version is version("4.2", "<") %}
   ssl:
-    mode: {{ mongodb_net_ssl_mode }}
-    PEMKeyFile: {{ mongodb_net_ssl_pemfile }}
-  {%- endif %}
-  {%- if mongodb_config['net'] is defined and mongodb_config['net'] is iterable %}
-  {%- for item in mongodb_config['net'] -%}
-  {{ item }}
+    mode: {{ mongodb_net_ssl_config['mode'] }}
+    {% if mongodb_net_ssl_config['certificateSelector'] is defined and mongodb_net_ssl_config['certificateSelector']|length > 0 %}
+    certificateSelector: {{ mongodb_net_ssl_config['certificateSelector'] }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['PEMKeyFileContent'] is defined and mongodb_net_ssl_config['PEMKeyFileContent']|length > 0 %}
+    PEMKeyFile: {{ mongodb_net_ssl_PEMKeyFile_path }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['PEMKeyPassword'] is defined and mongodb_net_ssl_config['PEMKeyPassword']|length > 0 %}
+    PEMKeyPassword: {{ mongodb_net_ssl_config['PEMKeyPassword'] }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['CAFileContent'] is defined and mongodb_net_ssl_config['CAFileContent']|length > 0 %}
+    CAFile: {{ mongodb_net_ssl_CAFile_path }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['CRLFileContent'] is defined and mongodb_net_ssl_config['CRLFileContent']|length > 0 %}
+    CRLFile: {{ mongodb_net_ssl_CRLFile_path }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['clusterCertificateSelector'] is defined and mongodb_net_ssl_config['clusterCertificateSelector']|length > 0 %}
+    clusterCertificateSelector: {{ mongodb_net_ssl_config['clusterCertificateSelector'] }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['clusterFileContent'] is defined and mongodb_net_ssl_config['clusterFileContent']|length > 0 %}
+    clusterFile: {{ mongodb_net_ssl_clusterFile_path }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['clusterPassword'] is defined and mongodb_net_ssl_config['clusterPassword']|length > 0 %}
+    clusterPassword: {{ mongodb_net_ssl_config['clusterPassword'] }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['clusterCAFileContent'] is defined and mongodb_net_ssl_config['clusterCAFileContent']|length > 0 %}
+    clusterCAFile: {{ mongodb_net_ssl_clusterCAFile_path }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['allowConnectionsWithoutCertificates'] is defined and mongodb_net_ssl_config['allowConnectionsWithoutCertificates'] is boolean %}
+    allowConnectionsWithoutCertificates: {{ mongodb_net_ssl_config['allowConnectionsWithoutCertificates'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates'] is boolean %}
+    allowInvalidCertificates: {{ mongodb_net_ssl_config['allowInvalidCertificates'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['allowInvalidHostnames'] is defined and mongodb_net_ssl_config['allowInvalidHostnames'] is boolean %}
+    allowInvalidHostnames: {{ mongodb_net_ssl_config['allowInvalidHostnames'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['FIPSMode'] is defined and mongodb_net_ssl_config['FIPSMode'] is boolean %}
+    FIPSMode: {{ mongodb_net_ssl_config['FIPSMode'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_ssl_config['disabledProtocols'] is defined and mongodb_net_ssl_config['disabledProtocols']|length > 0 %}
+    disabledProtocols: {{ mongodb_net_ssl_config['disabledProtocols'] }}
+    {% endif %}
+  {% elif mongodb_net_tls_enabled is defined and mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is defined and mongodb_net_tls_config['mode']|length > 0 and mongodb_major_version is version("4.2", ">=") %}
+  tls:
+    mode: {{ mongodb_net_tls_config['mode'] }}
+    {% if mongodb_net_tls_config['certificateSelector'] is defined and mongodb_net_tls_config['certificateSelector']|length > 0 %}
+    certificateSelector: {{ mongodb_net_tls_config['certificateSelector'] }}
+    {% endif %}
+    {% if mongodb_net_tls_config['certificateKeyFileContent'] is defined and mongodb_net_tls_config['certificateKeyFileContent']|length > 0 %}
+    certificateKeyFile: {{ mongodb_net_tls_certificateKeyFile_path }}
+    {% endif %}
+    {% if mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0 %}
+    certificateKeyFilePassword: {{ mongodb_net_tls_config['certificateKeyFilePassword'] }}
+    {% endif %}
+    {% if mongodb_net_tls_config['CAFileContent'] is defined and mongodb_net_tls_config['CAFileContent']|length > 0 %}
+    CAFile: {{ mongodb_net_tls_CAFile_path }}
+    {% endif %}
+    {% if mongodb_net_tls_config['CRLFileContent'] is defined and mongodb_net_tls_config['CRLFileContent']|length > 0 %}
+    CRLFile: {{ mongodb_net_tls_CRLFile_path }}
+    {% endif %}
+    {% if mongodb_net_tls_config['clusterCertificateSelector'] is defined and mongodb_net_tls_config['clusterCertificateSelector']|length > 0 %}
+    clusterCertificateSelector: {{ mongodb_net_tls_config['clusterCertificateSelector'] }}
+    {% endif %}
+    {% if mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent']|length > 0 %}
+    clusterFile: {{ mongodb_net_tls_clusterFile_path }}
+    {% endif %}
+    {% if mongodb_net_tls_config['clusterPassword'] is defined and mongodb_net_tls_config['clusterPassword']|length > 0 %}
+    clusterPassword: {{ mongodb_net_tls_config['clusterPassword'] }}
+    {% endif %}
+    {% if mongodb_net_tls_config['clusterCAFileContent'] is defined and mongodb_net_tls_config['clusterCAFileContent']|length > 0 %}
+    clusterCAFile: {{ mongodb_net_tls_clusterCAFile_path }}
+    {% endif %}
+    {% if mongodb_net_tls_config['allowConnectionsWithoutCertificates'] is defined and mongodb_net_tls_config['allowConnectionsWithoutCertificates'] is boolean %}
+    allowConnectionsWithoutCertificates: {{ mongodb_net_tls_config['allowConnectionsWithoutCertificates'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'] is boolean %}
+    allowInvalidCertificates: {{ mongodb_net_tls_config['allowInvalidCertificates'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_tls_config['allowInvalidHostnames'] is defined and mongodb_net_tls_config['allowInvalidHostnames'] is boolean %}
+    allowInvalidHostnames: {{ mongodb_net_tls_config['allowInvalidHostnames'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_tls_config['FIPSMode'] is defined and mongodb_net_tls_config['FIPSMode'] is boolean %}
+    FIPSMode: {{ mongodb_net_tls_config['FIPSMode'] | to_nice_json }}
+    {% endif %}
+    {% if mongodb_net_tls_config['disabledProtocols'] is defined and mongodb_net_tls_config['disabledProtocols']|length > 0 %}
+    disabledProtocols: {{ mongodb_net_tls_config['disabledProtocols'] }}
+    {% endif %}
+    {% if mongodb_net_tls_config['logVersions'] is defined and mongodb_net_tls_config['logVersions']|length > 0 %}
+    logVersions: {{ mongodb_net_tls_config['logVersions'] }}
+    {% endif %}
+  {% endif %}
+  {% if mongodb_config['net'] is defined and mongodb_config['net'] is iterable %}
+  {% for key, value in mongodb_config['net'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 
 processManagement:
   fork: {{ mongodb_processmanagement_fork | to_nice_json}}
-  {% if mongodb_pidfile_path is defined and mongodb_pidfile_path != '' -%}
+  {% if mongodb_pidfile_path is defined and mongodb_pidfile_path != '' %}
   pidFilePath: {{ mongodb_pidfile_path }}
-  {%- endif %}
-  {%- if mongodb_config['processManagement'] is defined and mongodb_config['processManagement'] is iterable %}
-  {%- for item in mongodb_config['processManagement'] -%}
-  {{ item }}
+  {% endif %}
+  {% if mongodb_config['processManagement'] is defined and mongodb_config['processManagement'] is iterable %}
+  {% for key, value in mongodb_config['processManagement'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 
-{% if mongodb_replication_enabled -%}
+{% if mongodb_replication_enabled %}
 replication:
   oplogSizeMB: {{ mongodb_replication_oplogsize | int }}
   replSetName: {{ mongodb_replication_replset }}
-  {% if mongodb_storage_engine == 'mmapv1' -%}
+  {% if mongodb_storage_engine == 'mmapv1' %}
   secondaryIndexPrefetch: {{ mongodb_replication_replindexprefetch }}
-  {%- endif %}
-  {%- if mongodb_config['replication'] is defined and mongodb_config['replication'] is iterable %}
-  {%- for item in mongodb_config['replication'] -%}
-  {{ item }}
+  {% endif %}
+  {% if mongodb_config['replication'] is defined and mongodb_config['replication'] is iterable %}
+  {% for key, value in mongodb_config['replication'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 {% endif %}
 
 security:
   authorization: {{ 'enabled' if mongodb_security_authorization_enabled else 'disabled' }}
-  {% if mongodb_replication_enabled and mongodb_security_authorization_enabled -%}
+  {% if mongodb_replication_enabled and mongodb_security_authorization_enabled %}
   keyFile: {{ mongodb_security_keyfile_path }}
-  {% endif -%}
+  {% endif %}
   javascriptEnabled: {{ mongodb_security_javascript_enabled | to_nice_json }}
-  {%- if mongodb_config['security'] is defined and mongodb_config['security'] is iterable %}
-  {%- for item in mongodb_config['security'] -%}
-  {{ item }}
+  {% if mongodb_config['security'] is defined and mongodb_config['security'] is iterable %}
+  {% for key, value in mongodb_config['security'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 
@@ -63,69 +153,69 @@ storage:
   engine: {{ mongodb_storage_engine }}
   journal:
     enabled: {{ mongodb_storage_journal_enabled | to_nice_json }}
-  {% if mongodb_storage_engine == 'mmapv1' -%}
+  {% if mongodb_storage_engine == 'mmapv1' %}
   mmapv1:
     quota:
       enforced: {{ mongodb_storage_quota_enforced | to_nice_json }}
       maxFilesPerDB: {{ mongodb_storage_quota_maxfiles }}
     smallFiles: {{ mongodb_storage_smallfiles | to_nice_json }}
-  {% endif -%}
-  {% if mongodb_storage_engine == 'wiredTiger' -%}
+  {% endif %}
+  {% if mongodb_storage_engine == 'wiredTiger' %}
   wiredTiger:
     engineConfig:
-      {% if mongodb_wiredtiger_cache_size is defined -%}
+      {% if mongodb_wiredtiger_cache_size is defined %}
       cacheSizeGB: {{ mongodb_wiredtiger_cache_size }}
-      {% endif -%}
+      {% endif %}
       directoryForIndexes: {{ mongodb_wiredtiger_directory_for_indexes | to_nice_json }}
-  {%- endif %}
-  {%- if mongodb_config['storage'] is defined and mongodb_config['storage'] is iterable %}
-  {%- for item in mongodb_config['storage'] -%}
-  {{ item }}
+  {% endif %}
+  {% if mongodb_config['storage'] is defined and mongodb_config['storage'] is iterable %}
+  {% for key, value in mongodb_config['storage'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 
 systemLog:
   destination: {{ mongodb_systemlog_destination }}
-  {% if mongodb_systemlog_destination == 'file' -%}
+  {% if mongodb_systemlog_destination == 'file' %}
   logAppend: {{ mongodb_systemlog_logappend | to_nice_json }}
   logRotate: {{ mongodb_systemlog_logrotate }}
   path: {{ mongodb_systemlog_path }}
-  {%- endif %}
-  {%- if mongodb_config['systemLog'] is defined and mongodb_config['systemLog'] is iterable %}
-  {%- for item in mongodb_config['systemLog'] -%}
-  {{ item }}
+  {% endif %}
+  {% if mongodb_config['systemLog'] is defined and mongodb_config['systemLog'] is iterable %}
+  {% for key, value in mongodb_config['systemLog'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 
 operationProfiling:
   slowOpThresholdMs: {{ mongodb_operation_profiling_slow_op_threshold_ms }}
   mode: {{ mongodb_operation_profiling_mode }}
-  {%- if mongodb_config['operationProfiling'] is defined and mongodb_config['operationProfiling'] is iterable %}
-  {%- for item in mongodb_config['operationProfiling'] -%}
-  {{ item }}
+  {% if mongodb_config['operationProfiling'] is defined and mongodb_config['operationProfiling'] is iterable %}
+  {% for key, value in mongodb_config['operationProfiling'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 
-{% if mongodb_major_version is version("4.0", ">=") -%}
+{% if mongodb_major_version %}
 cloud:
   monitoring:
     free:
       state: {{ mongodb_cloud_monitoring_free_state }}
-  {%- if mongodb_config['cloud'] is defined and mongodb_config['cloud'] is iterable %}
-  {%- for item in mongodb_config['cloud'] -%}
-  {{ item }}
+  {% if mongodb_config['cloud'] is defined and mongodb_config['cloud'] is iterable %}
+  {% for key, value in mongodb_config['cloud'].items() %}
+  {{ key }}: {{ value }}
   {% endfor %}
   {% endif %}
 {% endif %}
 
-{% if mongodb_set_parameters -%}
+{% if mongodb_config['setParameter'] is defined and mongodb_config['setParameter'] is iterable %}
 setParameter:
-  {% for key, value in mongodb_set_parameters.items() -%}
+  {% for key, value in mongodb_config['setParameter'].items() %}
   {{ key }}: {{ value }}
   {% endfor %}
 {% endif %}
 
-{% if mongodb_sharding_enabled -%}
+{% if mongodb_sharding_enabled %}
 sharding:
   clusterRole: {{ mongodb_sharding_role }}
 {% endif %}
