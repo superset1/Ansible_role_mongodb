@@ -1,7 +1,7 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.0
+Version v1.5.1
 
 ## Content
 ------------
@@ -43,13 +43,9 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.0
-- Added SSL/TLS support for MongoDB Standalone, Cluster and Sharding
-- Deleted connection variables
-- Fixed Mongodb root user existence check
-- Fixed user creation tasks if master was switched
-- Updated validation tasks
-- Updated README: added examples with TLS
+### What's new in v1.5.1
+- Fixed connection when creating a replicaset
+- Renamed some service variables
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -266,17 +262,17 @@ mongodb_cloud_monitoring_free_state: "runtime"
 mongodb_standalone_host_group: "mongo_standalone"
 
 ## Replication options
-mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharding_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"  # Enable replication
+mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharded_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"  # Enable replication
 mongodb_replication_host_group: "mongo_cluster"
-mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharding_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
+mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharded_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
 mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
 mongodb_replication_oplogsize: 4096                                                     # Specifies a maximum size in megabytes for the replication operation log
 mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
 
 ## Sharding options
 mongodb_sharding_state: "present"                                                       # Adding replicaset to sharding the cluster
-mongodb_sharded_databases: []                                                          # List of databases to run command sh.enableSharding()
-mongodb_sharding_host_group: "mongo_shard_"                                             # Prefix for shards group in the hosts file
+mongodb_sharded_databases: []                                                           # List of databases to run command sh.enableSharding()
+mongodb_sharded_host_group: "mongo_shard_"                                              # Prefix for shards group in the hosts file
 
 ## Mongocfg options
 mongodb_config_host_group: "mongocfg_servers"
@@ -493,7 +489,7 @@ www.mongoshard-2-1.com
 www.mongoshard-2-2.com
 www.mongoshard-2-3.com
 
-[mongo_sharding_cluster:children]
+[mongo_sharded_cluster:children]
 mongocfg_servers
 mongos_servers
 mongo_shard_01

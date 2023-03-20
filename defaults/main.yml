@@ -126,9 +126,9 @@ mongodb_cloud_monitoring_free_state: "runtime"
 mongodb_standalone_host_group: "mongo_standalone"
 
 ## Replication options
-mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharding_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"  # Enable replication
+mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharded_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"  # Enable replication
 mongodb_replication_host_group: "mongo_cluster"
-mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharding_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
+mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharded_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
 mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
 mongodb_replication_oplogsize: 4096                                                     # Specifies a maximum size in megabytes for the replication operation log
 mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
@@ -136,7 +136,7 @@ mongodb_replication_reconfigure: false                                          
 ## Sharding options
 mongodb_sharding_state: "present"                                                       # Adding replicaset to sharding the cluster
 mongodb_sharded_databases: []                                                          # List of databases to run command sh.enableSharding()
-mongodb_sharding_host_group: "mongo_shard_"                                             # Prefix for shards group in the hosts file
+mongodb_sharded_host_group: "mongo_shard_"                                             # Prefix for shards group in the hosts file
 
 ## Mongocfg options
 mongodb_config_host_group: "mongocfg_servers"

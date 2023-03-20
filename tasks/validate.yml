@@ -123,11 +123,11 @@
     - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-configure]
 
-- name: Check the Groups '{{ mongodb_sharding_host_group }}[0-9]+' and '{{ mongodb_config_host_group }}' and '{{ mongos_host_group }}' Exists if Sharded Cluster
+- name: Check the Groups '{{ mongodb_sharded_host_group }}[0-9]+' and '{{ mongodb_config_host_group }}' and '{{ mongos_host_group }}' Exists if Sharded Cluster
   assert:
     that:
       - mongodb_main_group|regex_replace('[0-9]+$','') in mongodb_valid_groups
-    fail_msg: "Create '{{ mongodb_sharding_host_group }}[0-9]+' and '{{ mongodb_config_host_group }}' and '{{ mongos_host_group }}' groups in hosts file and add your servers to it!"
+    fail_msg: "Create '{{ mongodb_sharded_host_group }}[0-9]+' and '{{ mongodb_config_host_group }}' and '{{ mongos_host_group }}' groups in hosts file and add your servers to it!"
     quiet: true
   when: 
     - mongodb_sharding_enabled

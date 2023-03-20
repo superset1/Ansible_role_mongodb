@@ -18,7 +18,7 @@ mongoshard-2-1
 mongoshard-2-2
 mongoshard-2-3
 
-[mongo_sharding_cluster:children]
+[mongo_sharded_cluster:children]
 mongocfg_servers
 mongos_servers
 mongo_shard_01

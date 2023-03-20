@@ -7,7 +7,7 @@ vault_url: "{{ lookup('env','VAULT_ADDR') }}"
 os: "linux"
 bin_arch: "amd64"
 
-mongodb_valid_groups: "{{ [mongodb_standalone_host_group, mongodb_replication_host_group, mongodb_sharding_host_group, mongodb_config_host_group, mongos_host_group] }}"
+mongodb_valid_groups: "{{ [mongodb_standalone_host_group, mongodb_replication_host_group, mongodb_sharded_host_group, mongodb_config_host_group, mongos_host_group] }}"
 
 mongodb_major_version: "{{ mongodb_version[0:3] }}"
 mongodb_apt_keyserver: keyserver.ubuntu.com
@@ -22,7 +22,7 @@ mongodb_apt_key_id:
 
 ## Sharding options
 mongodb_sharding_enabled: "{{ true if (mongodb_config_host_group in groups.keys() or mongos_host_group in groups.keys()) else false }}"
-mongodb_sharding_role: "{{ 'shardsvr' if mongodb_sharding_host_group in mongodb_main_group else 'configsvr' if mongodb_main_group == mongodb_config_host_group else '' }}"
+mongodb_sharding_role: "{{ 'shardsvr' if mongodb_sharded_host_group in mongodb_main_group else 'configsvr' if mongodb_main_group == mongodb_config_host_group else '' }}"
 
 mongodb_net_ssl_PEMKeyFile_path: "{{ mongodb_net_tls_certificateKeyFile_path }}"
 mongodb_net_ssl_CAFile_path: "{{ mongodb_net_tls_CAFile_path }}"

@@ -8,7 +8,7 @@
     - replicaset_name: "{{ mongodb_replication_replset }}"
       group_name: "{{ mongodb_main_group }}"
   when:
-    - mongodb_sharding_host_group in mongodb_main_group
+    - mongodb_sharded_host_group in mongodb_main_group
   tags: [mongos, mongos-sharding]
 
 - name: Set Shard Names for Mongos
