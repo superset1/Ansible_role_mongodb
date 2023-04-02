@@ -1,11 +1,11 @@
 ---
 
-- name: Set Main Group For Hosts
-  set_fact:
-    mongodb_main_group: "{{ group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first }}"
-  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongodb-force-restart, mongos-configure, mongos-logrotate, mongos-force-restart, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongodb-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
-
 - block:
+  - name: Set Main Group For Hosts
+    set_fact:
+      mongodb_main_group: "{{ group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first }}"
+    tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongodb-force-restart, mongos-configure, mongos-logrotate, mongos-force-restart, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongodb-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
+
   - name: Set ansible_distribution_release to Buster (Debian 10) When Bullseye (Debian 11) and MongoDB Version < 5.0.8
     set_fact:
       ansible_distribution_release: "buster"
@@ -27,8 +27,8 @@
       mongodb_master: true
     when:
       - mongodb_replication_enabled
-      - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')
-      - inventory_hostname == (hostvars|dict2items|selectattr('value.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('value.mongodb_arbiter', 'undefined')|map(attribute='value.inventory_hostname')|list)[0]
+      - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')
+      - inventory_hostname == (hostvars|dict2items|selectattr('value.mongodb_main_group', 'defined')|selectattr('value.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('value.mongodb_arbiter', 'undefined')|map(attribute='value.inventory_hostname')|list)[0]
       - mongodb_main_group != mongos_host_group
     tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
@@ -58,12 +58,12 @@
 
   - name: Set Arbiter Index if 'mongodb_arbiter' is Defined
     set_fact:
-      mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
+      mongodb_arbiter_index: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')|map(attribute='1.inventory_hostname')|list)[0] }}"
     with_items:
       - "{{ mongodb_main_group }}"
     when:
       - mongodb_replication_enabled
-      - hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
+      - hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
       - mongodb_main_group != mongos_host_group
     tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
@@ -108,4 +108,4 @@
     when: 
       - mongodb_exporter_enabled == 'true'
     tags: [mongodb, mongos, mongodb-exporter]
-  when: mongodb_main_group|regex_replace('[0-9]*$', '') in mongodb_valid_groups
+  when: group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first | regex_replace('[0-9]*$', '') in mongodb_valid_groups

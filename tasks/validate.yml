@@ -136,7 +136,7 @@
 - name: Check Value of Variable mongodb_master if mongodb_replication_enabled is True
   assert:
     that:
-      - "{{ hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')|map(attribute='1.mongodb_master')|list }}"
+      - "{{ hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')|map(attribute='1.mongodb_master')|list }}"
     fail_msg: 'Set mongodb_master to True next to the master server in hosts file!'
     quiet: true
   when: 

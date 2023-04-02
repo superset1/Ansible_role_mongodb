@@ -2,7 +2,7 @@
 
 - name: Create Root User '{{ mongodb_root_admin_name }}' {{ 'in the Replicaset' if mongodb_replication_enabled else 'Standalone Database' }}
   any_errors_fatal: true
-  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
+  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
   community.mongodb.mongodb_user:
     name: "{{ item.name }}"
     password: "{{ item.password }}"
@@ -109,11 +109,11 @@
   tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
 
 - name: Create Custom Backup Role 'backupCustom' When mongodb_version >= 6.0
-  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname)}}"
+  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname)}}"
   community.mongodb.mongodb_shell:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
-    login_host: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
+    login_host: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
     db: "{{ mongodb_login_database }}"
