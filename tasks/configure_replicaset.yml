@@ -1,6 +1,18 @@
 ---
 
+- name: Lookup PRIMARY Replicaset Member if Root User Exists and 'mongodb_replication_reconfigure' is True
+  set_fact:
+    mongodb_primary_host: "{{ item.key.split(':')[0] }}"
+  with_items: 
+    - "{{ lookup('dict', mongodb_root_admin_exist_replicaset.replicaset) }}"
+  when:
+    - mongodb_replication_reconfigure
+    - not mongodb_root_admin_exist_replicaset.failed
+    - "'PRIMARY' in item.value"
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
+
 - name: "{{ 'Configure a' if not mongodb_replication_reconfigure else 'Reconfigure the' }} Replicaset"
+  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
   any_errors_fatal: true
   community.mongodb.mongodb_replicaset:
     login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
@@ -37,8 +49,9 @@
   tags: [mongodb, mongodb-replicaset]
 
 - name: Waiting for the Replicaset to Stabilise
+  delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
   any_errors_fatal: true
-  mongodb_status_edited: # Module allows STARTUP2 status when reconfiguring replicaset
+  mongodb_status_edited: # Module allows validate: ['primary', 'reconfigure']
     login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
     login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
     login_host: "localhost"
@@ -65,7 +78,7 @@
               'CERT_REQUIRED' }}"
     poll: 10
     interval: 10
-    reconfigure: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary(mongodb_replication_reconfigure, false) }}"
+    validate: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary('reconfigure', omit) }}"
   register: mongodb_replicaset_status
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
 

@@ -195,15 +195,13 @@ def replicaset_good(statuses, module, votes):
     valid_statuses = ["PRIMARY", "SECONDARY", "ARBITER"]
     validate = module.params['validate']
 
-    reconfigure = module.params['reconfigure'] # Added by Vitaly Kargin
-    if reconfigure: valid_statuses.append("STARTUP2") # Added by Vitaly Kargin
+    if validate == 'reconfigure': valid_statuses.append("STARTUP2") # Added by Vitaly Kargin
 
     if validate == "default":
         if len(statuses) % 2 == 1:
             if (statuses.count("PRIMARY") == 1
                 and ((statuses.count("SECONDARY")
-                      + statuses.count("ARBITER")
-                          + (statuses.count("STARTUP2") if reconfigure else 0 )) % 2 == 0) # Edited by Vitaly Kargin
+                      + statuses.count("ARBITER")) % 2 == 0)
                     and len(set(statuses) - set(valid_statuses)) == 0):
                 status = True
                 msg = "replicaset is in a converged state"
@@ -234,6 +232,30 @@ def replicaset_good(statuses, module, votes):
         else:
             status = False
             msg = "replicaset is not currently in a converged state"
+    ### Added by Vitaly Kargin ###
+    elif validate == "primary":
+        if (statuses.count("PRIMARY") == 1):
+            status = True
+            msg = "replicaset is in a converged state"
+        else:
+            status = False
+            msg = "PRIMARY member not found"
+    elif validate == "reconfigure":
+        if len(statuses) % 2 == 1:
+            if (statuses.count("PRIMARY") == 1
+                and ((statuses.count("SECONDARY")
+                      + statuses.count("ARBITER")
+                          + (statuses.count("STARTUP2") if validate == "reconfigure" else 0 )) % 2 == 0)
+                    and len(set(statuses) - set(valid_statuses)) == 0):
+                status = True
+                msg = "replicaset is in a converged state"
+            else:
+                status = False
+                msg = "replicaset is not currently in a converged state"
+    ### Added by Vitaly Kargin ###
+        else:
+            msg = "Even number of servers in replicaset."
+            status = False
     else:
         module.fail_json(msg="Invalid value for validate has been provided: {0}".format(validate))
     return status, msg
@@ -312,8 +334,7 @@ def main():
         interval=dict(type='int', default=30),
         poll=dict(type='int', default=1),
         replica_set=dict(type='str', default="rs0"),
-        validate=dict(type='str', choices=['default', 'votes', 'minimal'], default='default'),
-        reconfigure=dict(type='bool', default=False), # Added by Vitaly Kargin
+        validate=dict(type='str', choices=['default', 'votes', 'minimal', 'primary', 'reconfigure'], default='default'), # Edited by Vitaly Kargin
     )
     module = AnsibleModule(
         argument_spec=argument_spec,

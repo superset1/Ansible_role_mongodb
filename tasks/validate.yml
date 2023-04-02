@@ -169,13 +169,13 @@
   tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Replicaset
-  community.mongodb.mongodb_info:
-    connection_options: "replicaSet={{ mongodb_replication_replset }}"
+  mongodb_status_edited: # Module allows validate: ['primary', 'reconfigure']
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
     login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset }}"
     tls: "{{ ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is regex('requireSSL|preferSSL')) or
               (mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is regex('requireTLS|preferTLS'))) }}"
     tlsCertificateKeyFile:
@@ -194,6 +194,9 @@
           "{{ 'CERT_NONE' if ((not mongodb_net_ssl_enabled) and (not mongodb_net_tls_enabled)) else
               'CERT_OPTIONAL' if ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates']) or (mongodb_net_tls_enabled and mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'])) else
               'CERT_REQUIRED' }}"
+    poll: 3
+    interval: 1
+    validate: "primary"
   ignore_errors: true
   register: mongodb_root_admin_exist_replicaset
   when:
@@ -243,7 +246,23 @@
   when: 
     - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter, mongos-sharding]
-  
+
+- name: Check that Normal User's Dictionary is Correctly Filled
+  assert:
+    that:
+      - item.name is defined and item.name|length > 0
+      - "{% if not (item.state is defined and item.state == 'absent') %}item.password is defined and item.password|length > 0{% endif %}"
+      - "{% if not (item.state is defined and item.state == 'absent') %}item.roles is defined and item.roles|length > 0{% endif %}"
+    quiet: true
+    fail_msg: "Fill in the user's dictionary correctly!"
+  with_items:
+    - "{{ mongodb_users }}"
+  when:
+    - mongodb_users is defined
+    - mongodb_users | length > 0
+    - mongodb_main_group != mongos_host_group
+  tags: [mongodb, mongodb-add-users]
+
 - name: Register CPU AVX Flag if Used mongodb_version >= '5.0'
   shell: "set -o pipefail && grep -m 1 ^flags /proc/cpuinfo | grep -qw avx"
   args:

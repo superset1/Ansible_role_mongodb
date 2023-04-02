@@ -2,7 +2,11 @@
 # {{ ansible_managed }}
 
 net:
+  {% if mongodb_net_bind_ip_all %}
+  bindIpAll: true
+  {% else %}
   bindIp: {{ mongodb_net_bindip }}
+  {% endif %}
   {% if mongodb_major_version is version("3.6", "<") %}
   http:
     enabled: {{ mongodb_net_http_enabled | to_nice_json }}
@@ -153,6 +157,9 @@ storage:
   engine: {{ mongodb_storage_engine }}
   journal:
     enabled: {{ mongodb_storage_journal_enabled | to_nice_json }}
+    {% if mongodb_storage_journal_commitIntervalMs is defined and mongodb_storage_journal_commitIntervalMs|length > 0 %}
+    commitIntervalMs: {{ mongodb_storage_journal_commitIntervalMs | to_nice_json }}
+    {% endif %}
   {% if mongodb_storage_engine == 'mmapv1' %}
   mmapv1:
     quota:
@@ -163,10 +170,10 @@ storage:
   {% if mongodb_storage_engine == 'wiredTiger' %}
   wiredTiger:
     engineConfig:
-      {% if mongodb_wiredtiger_cache_size is defined %}
-      cacheSizeGB: {{ mongodb_wiredtiger_cache_size }}
+      {% if mongodb_storage_wiredtiger_cache_size is defined and mongodb_storage_wiredtiger_cache_size|length > 0 %}
+      cacheSizeGB: {{ mongodb_storage_wiredtiger_cache_size }}
       {% endif %}
-      directoryForIndexes: {{ mongodb_wiredtiger_directory_for_indexes | to_nice_json }}
+      directoryForIndexes: {{ mongodb_storage_wiredtiger_directory_for_indexes | to_nice_json }}
   {% endif %}
   {% if mongodb_config['storage'] is defined and mongodb_config['storage'] is iterable %}
   {% for key, value in mongodb_config['storage'].items() %}

@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.3
+Version v1.5.4
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v153)
+  - [What's new](#whats-new-in-v154)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -24,6 +24,7 @@ Version v1.5.3
     - [Example hosts file for sharded cluster](#example-hosts-file-for-sharded-cluster)
     - [Example var file for sharded cluster](#example-var-file-for-sharded-cluster)
   - [Other examples](#other-examples)
+    - [Adding and deleting members in the replicaset](#adding-and-deleting-members-in-the-replicaset)
     - [Adding normal users to the worked production database](#adding-normal-users-to-the-worked-production-database)
     - [Deleting normal users from the worked production database](#deleting-normal-users-from-the-worked-production-database)
     - [Updating passwords for admins and normal users](#updating-passwords-for-admins-and-normal-users)
@@ -43,8 +44,14 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.3
-- Fixed ability to play the role together with other roles when using one host file
+### What's new in v1.5.4
+- Added checking that normal user's dictionary is correctly filled
+- Added `validate: ['primary', 'reconfigure']` to `mongodb_status_edited` module
+- Added lookup primary task for replicaset
+- Added variables:
+  - `mongodb_net_bind_ip_all`
+  - `mongodb_storage_journal_commitIntervalMs`
+  - `mongodb_storage_wiredtiger_cache_size`
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -135,7 +142,6 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 # I will recommend you to use latest version of MongoDB.
 
 ## Main options
-ansible_user: root
 mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
 mongodb_package: "mongodb-org"
 mongodb_package_state: "present"
@@ -162,6 +168,7 @@ mongodb_group: "{{ 'mongod' if ('RedHat' == ansible_os_family) else 'mongodb' }}
   
 ## Net options
 mongodb_net_bindip: 0.0.0.0                      # Comma separated list of ip addresses to listen on
+mongodb_net_bind_ip_all: false
 mongodb_net_http_enabled: false                  # Enable http interface
 mongodb_net_ipv6: false                          # Enable IPv6 support (disabled by default)
 mongodb_net_maxconns: 65536                      # Max number of simultaneous connections
@@ -229,7 +236,8 @@ mongodb_storage_smallfiles: false                # Very useful for non-data node
 mongodb_storage_journal_enabled: true            # Enable journaling
 mongodb_storage_prealloc: true                   # Enable data file preallocation
 
-mongodb_wiredtiger_directory_for_indexes: false
+mongodb_storage_wiredtiger_cache_size: ""
+mongodb_storage_wiredtiger_directory_for_indexes: false
 
 ## SystemLog options
 ## The destination to which MongoDB sends all log output. Specify either 'file' or 'syslog'.
@@ -543,6 +551,14 @@ mongodb_oplog_users: # Optional if you want to add oplog user
 ```
 
 ## Other examples
+
+### Adding and deleting members in the replicaset 
+
+To add or delete members in the replicaset:
+
+1) Add new or remove unwanted members from the hosts file
+2) Make sure the number of members is odd
+3) Run playbook with extra-var `-e mongodb_replication_reconfigure=true`
 
 ### Adding normal users to the worked production database
 
