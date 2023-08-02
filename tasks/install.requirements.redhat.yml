@@ -1,0 +1,34 @@
+---
+
+- name: Install PyMongo Package
+  yum:
+    name: python-pymongo
+    state: present
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: not mongodb_pymongo_from_pip
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-install-requirements]
+
+- name: Install PIP
+  yum:
+    name:
+      - python3-pip
+      - python3-devel
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-install-requirements]
+
+- name: Install Setuptools (required for ansible 2.7+)
+  yum:
+    name:
+      - python3-setuptools
+    lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-install-requirements]
+
+- name: Install PyMongo from PIP
+  pip:
+    name: pymongo
+    state: "{{ mongodb_pymongo_pip_version is defined | ternary('present', 'latest') }}"
+    version: "{{ mongodb_pymongo_pip_version | default(omit) }}"
+  when: mongodb_pymongo_from_pip
+  tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-install-requirements]

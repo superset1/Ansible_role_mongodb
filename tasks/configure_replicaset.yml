@@ -9,7 +9,7 @@
     - mongodb_replication_reconfigure
     - not mongodb_root_admin_exist_replicaset.failed
     - "'PRIMARY' in item.value"
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
+  tags: [mongodb, mongodb-replicaset]
 
 - name: "{{ 'Configure a' if not mongodb_replication_reconfigure else 'Reconfigure the' }} Replicaset"
   delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
@@ -80,12 +80,12 @@
     interval: 10
     validate: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary('reconfigure', omit) }}"
   register: mongodb_replicaset_status
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
+  tags: [mongodb, mongodb-replicaset]
 
 - name: Lookup PRIMARY Replicaset Member
   set_fact:
     mongodb_primary_host: "{{ item.key.split(':')[0] }}"
   with_items: 
-    - "{{ lookup('dict', mongodb_replicaset_status.replicaset) }}"
+    - "{{ lookup('dict', mongodb_replicaset_status.replicaset|default(mongodb_root_admin_exist_replicaset.replicaset)) }}"
   when: "'PRIMARY' in item.value"
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]

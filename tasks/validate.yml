@@ -205,7 +205,7 @@
     - mongodb_master
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter]
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-commands, mongos-sharding, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Standalone Database
   community.mongodb.mongodb_info:
@@ -238,14 +238,14 @@
     - not mongodb_replication_enabled
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-create-admin-users, mongodb-exporter]
+  tags: [mongodb, mongodb-create-admin-users, mongodb-commands, mongodb-exporter]
 
 - name: Set Results of Root User Existence Check
   set_fact: 
     mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_standalone | default({}))  }}"
   when: 
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-exporter, mongos-sharding]
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-commands, mongodb-exporter, mongos-sharding]
 
 - name: Check that Normal User's Dictionary is Correctly Filled
   assert:

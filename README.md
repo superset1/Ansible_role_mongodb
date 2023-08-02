@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.6
+Version v1.5.7
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v156)
+  - [What's new](#whats-new-in-v157)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -44,13 +44,13 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.6
-- Added ckeck for installed mongodb prometheus exporter version
-- Added variable `mongodb_storage_journal_commitIntervalMs` to default
-- Added variable `mongodb_exporter_force_install: true`
-- Converted variable `mongodb_exporter_enabled` to bool
-- Deleted `become` from tasks
-- Fixed check that logfile exists - don't calculate checksum
+### What's new in v1.5.7
+- Added ability to run additional commands in MongoDB
+- Added installation requirements tasks
+- Added task `Resize oplog` when `mongodb_replication_oplogresize: true`
+- Added variable `mongodb_replication_oplogresize: false`
+- Complete idempotency
+- Fixed backup role
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -93,6 +93,7 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - mongodb-create-admin-users (create initial users)
 - mongodb-create-oplog-users (create oplog users)
 - mongodb-add-users (add normal users anytime even on worked prod mongodb)
+- mongodb-commands (run some commands in MongoDB)
 - mongodb-force-restart (restart service mongodb | default is start only)
 - mongos (main tag for all mongos tasks | optional tag)
 - mongos-install (install mongos only)
@@ -274,6 +275,7 @@ mongodb_replication_host_group: "mongo_cluster"
 mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharded_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
 mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
 mongodb_replication_oplogsize: 4096                                                     # Specifies a maximum size in megabytes for the replication operation log
+mongodb_replication_oplogresize: false                                                  # Resize the replication operation log
 mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
 
 ## Sharding options

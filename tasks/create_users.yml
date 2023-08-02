@@ -181,7 +181,9 @@
       roles: "userAdminAnyDatabase"
     - name: "{{ mongodb_root_backup_name }}"
       password: "{{ mongodb_root_backup_password }}"
-      roles: "backup,clusterMonitor{{ ',backupCustom' if mongodb_major_version is version('6.0', '>=') else '' }}"
+      roles: 
+        - "clusterMonitor"
+        - "{{ 'backupCustom' if mongodb_major_version is version('6.0', '>=') else 'backup' }}"
   tags: [mongodb, mongodb-create-admin-users]
 
 - name: Create Oplog User in the Replicaset

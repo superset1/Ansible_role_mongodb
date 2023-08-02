@@ -146,32 +146,3 @@
     state: present
   when: mongodb_use_numa
   tags: [mongodb, mongos, mongodb-install, mongos-install]
-
-- name: Install PyMongo Package
-  apt:
-    name: python3-pymongo
-  when: not mongodb_pymongo_from_pip
-  tags: [mongodb, mongos, mongodb-install, mongos-install]
-
-- name: Install PIP
-  apt:
-    pkg:
-      - python3-pip
-      - python3-dev
-  when: mongodb_pymongo_from_pip
-  tags: [mongodb, mongos, mongodb-install, mongos-install]
-
-- name: Install Setuptools (required for ansible 2.7+)
-  apt:
-    pkg:
-      - python3-setuptools
-  when: mongodb_pymongo_from_pip
-  tags: [mongodb, mongos, mongodb-install, mongos-install]
-
-- name: Install PyMongo from PIP
-  pip:
-    name: pymongo
-    state: "{{ mongodb_pymongo_pip_version is defined | ternary('present', 'latest') }}"
-    version: "{{ mongodb_pymongo_pip_version | default(omit) }}"
-  when: mongodb_pymongo_from_pip
-  tags: [mongodb, mongos, mongodb-install, mongos-install]

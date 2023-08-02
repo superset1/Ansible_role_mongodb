@@ -4,7 +4,7 @@
   - name: Set Main Group For Hosts
     set_fact:
       mongodb_main_group: "{{ group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first }}"
-    tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongodb-force-restart, mongos-configure, mongos-logrotate, mongos-force-restart, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-mms, mongodb-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
+    tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-configure, mongodb-logrotate, mongodb-force-restart, mongos-configure, mongos-logrotate, mongos-force-restart, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongodb-commands, mongos-sharding, mongodb-mms, mongodb-exporter, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
 
   - name: Set ansible_distribution_release to Buster (Debian 10) When Bullseye (Debian 11) and MongoDB Version < 5.0.8
     set_fact:
@@ -30,11 +30,18 @@
       - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')
       - inventory_hostname == (hostvars|dict2items|selectattr('value.mongodb_main_group', 'defined')|selectattr('value.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('value.mongodb_arbiter', 'undefined')|map(attribute='value.inventory_hostname')|list)[0]
       - mongodb_main_group != mongos_host_group
-    tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongodb-exporter]
+    tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongodb-commands, mongodb-exporter]
+
+  - name: Include Installation Requirements Tasks
+    include_tasks: "{{ item }}"
+    with_first_found:
+      - "install.requirements.{{ ansible_distribution | lower }}.yml"
+      - "install.requirements.{{ ansible_os_family | lower }}.yml"
+    tags: [mongodb, mongos, mongodb-install, mongos-install, mongodb-install-requirements]
 
   - name: Include Validation Tasks
-    include_tasks: "validate.yml"
-    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongos-sharding, mongodb-exporter]
+    include_tasks: validate.yml
+    tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongodb-commands, mongos-sharding, mongodb-exporter]
 
   - name: Include MongoDB and MongoDB-Exporter Remove Tasks
     include_tasks: "{{ item }}"
@@ -44,7 +51,7 @@
       - "uninstall.{{ ansible_os_family | lower }}.yml"
     tags: [never, mongodb-uninstall, mongos-uninstall, mongodb-uninstall-exporter, mongodb-dbdelete]
 
-  - name: Include Installation Tasks
+  - name: Include MongoDB Installation Tasks
     include_tasks: "{{ item }}"
     with_first_found:
       - "install.{{ ansible_distribution | lower }}.yml"
@@ -82,6 +89,13 @@
       - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
       - mongodb_main_group != mongos_host_group
     tags: [mongodb, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+
+  - name: Include Additional Command Tasks
+    include_tasks: additional_commands.yml
+    when:
+      - not (hostvars|dict2items|selectattr('value.mongodb_root_admin_exist.failed', 'defined')|map(attribute='value.mongodb_root_admin_exist.failed'))[0]
+      - mongodb_main_group != mongos_host_group
+    tags: [never, mongodb-commands]
 
   - name: Include Mongos Configuration Tasks
     include_tasks: configure_mongos.yml
