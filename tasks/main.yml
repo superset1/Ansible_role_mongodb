@@ -80,7 +80,6 @@
       - mongodb_replication_enabled
       - hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
       - mongodb_main_group != mongos_host_group
-      - mongodb_replication_reconfigure or mongodb_root_admin_exist_replicaset.failed
     tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
   - name: Include Replication Tasks for Master if Root User '{{ mongodb_root_admin_name }}' Does Not Exist or 'mongodb_replication_reconfigure' is True
