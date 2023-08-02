@@ -96,20 +96,22 @@
     update_cache: true
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Add APT Key
+- name: Add APT Key for MongoDB Repository
   apt_key:
-    keyserver: "{{ mongodb_apt_keyserver }}"
-    id: "{{ mongodb_apt_key_id[mongodb_major_version] }}"
+    url: "{{ mongodb_apt_key_url }}"
+    state: present
+  register: _apt
+  until: _apt is succeeded
+  retries: 5
   when: 
     - mongodb_package == 'mongodb-org'
     - mongos_package == 'mongodb-org-mongos'
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Add APT Repository
+- name: Add MongoDB APT Repository
   apt_repository:
     repo: "{{ mongodb_repository[mongodb_major_version] }}"
     filename: "mongodb-{{ mongodb_version }}"
-    update_cache: true
   register: _apt
   until: _apt is succeeded
   retries: 5
@@ -120,24 +122,30 @@
 
 - name: Install MongoDB Package '{{ mongodb_version }}'
   apt:
-    name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    name: 
+      - "{{ mongodb_package + '-server=' + mongodb_version if mongodb_version | length > 3 else mongodb_package + '-server' }}"
+      - "{{ mongodb_package + '-shell=' + mongodb_version if mongodb_version | length > 3 else mongodb_package + '-shell' }}"
+      - "{{ mongodb_package + '-tools=' + mongodb_version if mongodb_version | length > 3 else mongodb_package + '-tools' }}"
     state: "{{ mongodb_package_state }}"
     update_cache: true
+    force: "{{ mongodb_force_install }}"
   when: mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-install]
 
 - name: Install Mongos Package '{{ mongos_version }}'
   apt:
-    name: "{{ mongos_package }}{% if (mongos_version | length > 3) %}={{ mongos_version }}{% endif %}"
+    name: "{{ mongos_package + '=' + mongos_version if mongos_version | length > 3 else mongos_package }}"
     state: "{{ mongos_package_state }}"
     update_cache: true
+    force: "{{ mongos_force_install }}"
   when: mongodb_main_group == mongos_host_group
   tags: [mongos, mongos-install]
 
-- name: Install Mongosh
+- name: Install Mongosh When MongoDB Version >= '4.4'
   apt:
     name: mongodb-mongosh
     state: present
+  when: mongodb_major_version is version('4.4', '>=')
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install Numactl Package

@@ -16,13 +16,27 @@
     state: present
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
-- name: Add YUM Repository
-  template:
-    src: mongodb.redhat.repo.j2
-    dest: /etc/yum.repos.d/mongodb-{{ mongodb_version }}.repo
-    mode: 0644
-  register: _apt
-  until: _apt is succeeded
+- name: Add GPG Key for MongoDB Repository
+  rpm_key:
+    key: "{{ mongodb_repository_rpm_key }}"
+    state: present
+  register: _yum
+  until: _yum is succeeded
+  retries: 5
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongos_package == 'mongodb-org-mongos'
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
+
+- name: Add MongoDB YUM Repository
+  yum_repository:
+    name: "mongodb-{{ mongodb_version }}"
+    description: "Official MongoDB {{ mongodb_major_version }} yum repo"
+    baseurl: "{{ mongodb_repository[mongodb_major_version] }}"
+    gpgcheck: true
+    gpgkey: "{{ mongodb_repository_gpg_key }}"
+  register: _yum
+  until: _yum is succeeded
   retries: 5
   when:
     - mongodb_package == 'mongodb-org'
@@ -31,7 +45,10 @@
 
 - name: Install MongoDB Package '{{ mongodb_version }}'
   yum:
-    name: "{{ mongodb_package }}{% if (mongodb_version | length > 3) %}={{ mongodb_version }}{% endif %}"
+    name: 
+      - "{{ mongodb_package + '-server=' + mongodb_version if mongodb_version | length > 3 else mongodb_package + '-server' }}"
+      - "{{ mongodb_package + '-shell=' + mongodb_version if mongodb_version | length > 3 else mongodb_package + '-shell' }}"
+      - "{{ mongodb_package + '-tools=' + mongodb_version if mongodb_version | length > 3 else mongodb_package + '-tools' }}"
     state: "{{ mongodb_package_state }}"
     lock_timeout: "{{ yum_lock_timeout }}"
   when: mongodb_main_group != mongos_host_group
@@ -39,17 +56,18 @@
 
 - name: Install Mongos Package '{{ mongos_version }}'
   yum:
-    name: "{{ mongos_package }}{% if (mongos_version | length > 3) %}={{ mongos_version }}{% endif %}"
+    name: "{{ mongos_package + '=' + mongos_version if mongos_version | length > 3 else mongos_package }}"
     state: "{{ mongos_package_state }}"
     lock_timeout: "{{ yum_lock_timeout }}"
   when: mongodb_main_group == mongos_host_group
   tags: [mongos, mongos-install]
 
-- name: Install Mongosh
+- name: Install Mongosh When MongoDB Version >= '4.4'
   yum:
     name: mongodb-mongosh
     state: present
     lock_timeout: "{{ yum_lock_timeout }}"
+  when: mongodb_major_version is version('4.4', '>=')
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Install Numactl Package

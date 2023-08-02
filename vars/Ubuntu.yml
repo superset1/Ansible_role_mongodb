@@ -7,4 +7,5 @@ mongodb_repository:
   "4.4": "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/4.4 multiverse"
   "5.0": "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/5.0 multiverse"
   "6.0": "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/6.0 multiverse"
-  
+
+mongodb_apt_key_url: "https://pgp.mongodb.com/server-{{ mongodb_major_version }}.asc"

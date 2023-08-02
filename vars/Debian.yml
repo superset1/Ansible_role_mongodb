@@ -7,3 +7,5 @@ mongodb_repository:
   "4.4": "deb http://repo.mongodb.org/apt/debian {{ ansible_distribution_release }}/mongodb-org/4.4 main"
   "5.0": "deb http://repo.mongodb.org/apt/debian {{ ansible_distribution_release }}/mongodb-org/5.0 main"
   "6.0": "deb http://repo.mongodb.org/apt/debian {{ ansible_distribution_release }}/mongodb-org/6.0 main"
+
+mongodb_apt_key_url: "https://pgp.mongodb.com/server-{{ mongodb_major_version }}.asc"

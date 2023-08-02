@@ -57,7 +57,8 @@
       - "install.{{ ansible_distribution | lower }}.yml"
       - "install.{{ ansible_os_family | lower }}.yml"
     when:
-      - mongodb_reconfigure or mongodb_replication_reconfigure or
+      - mongodb_reconfigure or mongodb_replication_reconfigure or mongodb_force_install or
+        hostvars | json_query('*.mongodb_root_admin_exist') | length == 0 or
         true in hostvars | json_query('*.mongodb_root_admin_exist.failed') or
         '(not reachable/healthy)' in hostvars | json_query('*.mongodb_root_admin_exist.replicaset.*[]')
     tags: [mongodb, mongos, mongodb-install, mongos-install]

@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.6.2
+Version v1.6.3
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v162)
+  - [What's new](#whats-new-in-v163)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -44,8 +44,12 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.6.2
-- Fixed checking arbiter index
+### What's new in v1.6.3
+- Added forced installation MongoDB and Mongos
+- Fixed apt and gpg keys
+- Fixed installation of a specific version of MongoDB and Mongos
+- Fixed `mongodb-install` tag
+- Skipped installation mongosh when MongoDB version <= 4.4
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -138,6 +142,7 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 
 ## Main options
 mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
+mongodb_force_install: false                     # Forced installation if there are any problems or you need to do a downgrade
 mongodb_package: "mongodb-org"
 mongodb_package_state: "present"
 mongodb_reconfigure: false                       # Reconfigure MongoDB
@@ -266,18 +271,18 @@ mongodb_cloud_monitoring_free_state: "runtime"
 mongodb_standalone_host_group: "mongo_standalone"
 
 ## Replication options
-mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharded_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"  # Enable replication
+mongodb_replication_enabled: "{{ true if (mongodb_replication_host_group in mongodb_main_group or mongodb_sharded_host_group in mongodb_main_group or mongodb_config_host_group in mongodb_main_group) else false }}"    # Enable replication
 mongodb_replication_host_group: "mongo_cluster"
 mongodb_replication_replset: "{{ ('rs' + mongodb_main_group.split('_')[-1] if mongodb_sharded_host_group in mongodb_main_group else mongodb_config_replication_replset_name if mongodb_main_group == mongodb_config_host_group else '') if mongodb_sharding_enabled else 'rs01' if mongodb_main_group == mongodb_replication_host_group else '' }}"      # Default name of replicaset
-mongodb_replication_replindexprefetch: "all"                                            # Specify index prefetching behavior (if secondary) [none|_id_only|all]
-mongodb_replication_oplogsize: 4096                                                     # Specifies a maximum size in megabytes for the replication operation log
-mongodb_replication_oplogresize: false                                                  # Resize the replication operation log
-mongodb_replication_reconfigure: false                                                  # Reconfigure replicaset for add or delete members
+mongodb_replication_replindexprefetch: "all"                          # Specify index prefetching behavior (if secondary) [none|_id_only|all]
+mongodb_replication_oplogsize: 4096                                   # Specifies a maximum size in megabytes for the replication operation log
+mongodb_replication_oplogresize: false                                # Resize the replication operation log
+mongodb_replication_reconfigure: false                                # Reconfigure replicaset for add or delete members
 
 ## Sharding options
-mongodb_sharding_state: "present"                                                       # Adding replicaset to sharding the cluster
-mongodb_sharded_databases: []                                                           # List of databases to run command sh.enableSharding()
-mongodb_sharded_host_group: "mongo_shard_"                                              # Prefix for shards group in the hosts file
+mongodb_sharding_state: "present"                                     # Adding replicaset to sharding the cluster
+mongodb_sharded_databases: []                                         # List of databases to run command sh.enableSharding()
+mongodb_sharded_host_group: "mongo_shard_"                            # Prefix for shards group in the hosts file
 
 ## Mongocfg options
 mongodb_config_host_group: "mongocfg_servers"
@@ -286,6 +291,7 @@ mongodb_config_replication_replset_name: "cfg"
 ## Mongos options
 mongos_host_group: "mongos_servers"
 mongos_daemon_name: "mongos"
+mongos_force_install: false                                           # Forced installation if there are any problems or you need to do a downgrade
 mongos_package: "mongodb-org-mongos"
 mongos_package_state: "present"
 mongos_version: "{{ mongodb_version }}"

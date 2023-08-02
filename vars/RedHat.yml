@@ -8,14 +8,8 @@ mongodb_repository:
   "5.0": "https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/5.0/x86_64/"
   "6.0": "https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/6.0/x86_64/"
 
-mongodb_repository_gpgkey:
-  "3.4": "https://www.mongodb.org/static/pgp/server-3.4.asc"
-  "3.6": "https://www.mongodb.org/static/pgp/server-3.6.asc"
-  "4.0": "https://www.mongodb.org/static/pgp/server-4.0.asc"
-  "4.2": "https://www.mongodb.org/static/pgp/server-4.2.asc"
-  "4.4": "https://www.mongodb.org/static/pgp/server-4.4.asc"
-  "5.0": "https://www.mongodb.org/static/pgp/server-5.0.asc"  
-  "6.0": "https://www.mongodb.org/static/pgp/server-6.0.asc"  
+mongodb_repository_rpm_key: "https://www.mongodb.org/static/pgp/server-{{ mongodb_major_version }}.asc"
+mongodb_repository_gpg_key: "https://www.mongodb.org/static/pgp/server-{{ mongodb_major_version }}.asc"
 
 mongodb_pidfile_path: "{{ '/run/mongodb/mongod.pid' if ('mongodb-org' in mongodb_package) else '' }}"
 mongos_pidfile_path: "{{ '/run/mongodb/mongos.pid' if ('mongodb-org-mongos' in mongos_package) else '' }}"
