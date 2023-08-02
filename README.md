@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.5
+Version v1.5.6
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v155)
+  - [What's new](#whats-new-in-v156)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -44,9 +44,13 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.5
-- Added collections to meta
-- Fixed creation admin users
+### What's new in v1.5.6
+- Added ckeck for installed mongodb prometheus exporter version
+- Added variable `mongodb_storage_journal_commitIntervalMs` to default
+- Added variable `mongodb_exporter_force_install: true`
+- Converted variable `mongodb_exporter_enabled` to bool
+- Deleted `become` from tasks
+- Fixed check that logfile exists - don't calculate checksum
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -229,6 +233,7 @@ mongodb_storage_quota_maxfiles: 8                # Number of quota files per DB
 mongodb_storage_smallfiles: false                # Very useful for non-data nodes
 
 mongodb_storage_journal_enabled: true            # Enable journaling
+mongodb_storage_journal_commitIntervalMs: 100    # The maximum amount of time in milliseconds that the mongod process allows between journal operations. Values can range from 1 to 500 milliseconds. Lower values increase the durability of the journal, at the expense of disk performance. (Default: 100)
 mongodb_storage_prealloc: true                   # Enable data file preallocation
 
 mongodb_storage_wiredtiger_cache_size: ""
@@ -358,7 +363,8 @@ mongodb_config: {}
 # MongoDB prometheus exporter
 mongodb_exporter_user: "mongodb-exporter"
 mongodb_exporter_group: "{{ mongodb_group if mongodb_main_group != mongos_host_group else mongos_group if mongodb_main_group == mongos_host_group else mongodb_exporter_user }}"
-mongodb_exporter_enabled: "true"
+mongodb_exporter_enabled: true
+mongodb_exporter_force_install: false
 mongodb_exporter_version: "0.37.0"
 mongodb_exporter_version_arbiter: "0.11.2"
 mongodb_exporter_link: "https://github.com/percona/mongodb_exporter/releases/download/v{{ mongodb_exporter_version }}/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"

@@ -30,7 +30,7 @@
       - not hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_master', 'defined')
       - inventory_hostname == (hostvars|dict2items|selectattr('value.mongodb_main_group', 'defined')|selectattr('value.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('value.mongodb_arbiter', 'undefined')|map(attribute='value.inventory_hostname')|list)[0]
       - mongodb_main_group != mongos_host_group
-    tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users]
+    tags: [mongodb, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-create-oplog-users, mongodb-add-users, mongodb-exporter]
 
   - name: Include Validation Tasks
     include_tasks: "validate.yml"
@@ -105,7 +105,7 @@
 
   - name: Include MongoDB Prometheus Exporter Installation Tasks
     include_tasks: mongodb-exporter.yaml
-    when: 
-      - mongodb_exporter_enabled == 'true'
+    when:
+      - mongodb_exporter_enabled
     tags: [mongodb, mongos, mongodb-exporter]
   when: group_names|select('match',(group_names|map('regex_replace', '[0-9]*$', '')|list|intersect(mongodb_valid_groups))[0]|default()) | list | first | regex_replace('[0-9]*$', '') in mongodb_valid_groups

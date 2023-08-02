@@ -1,7 +1,6 @@
 ---
 
 - name: Create MongoDB Prometheus Exporter Linux User '{{ mongodb_exporter_user }}'
-  become: true
   user:
     name: "{{ mongodb_exporter_user }}"
     comment: "MongoDB Prometheus Exporter User (Ansible Managed)"
@@ -47,97 +46,106 @@
     - mongodb_main_group != mongos_host_group
   tags: [mongodb, mongodb-exporter]
 
-- name: Create Temporary MongoDB Prometheus Exporter Directory
-  file:
-    path: "{{ mongodb_exporter_temp_dir }}"
-    state: directory
+- name: Check Installed MongoDB Prometheus Exporter Version
+  shell: "{{ mongodb_exporter_path }} --version | grep 'Version:' | cut -d ' ' -f 2"
+  failed_when: false
+  changed_when: false
+  register: mongodb_exporter_exists_version
   tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Set MongoDB Prometheus Exporter Version '{{ mongodb_exporter_version_arbiter }}' for Arbiter
-  set_fact: 
-    mongodb_exporter_version: "{{ mongodb_exporter_version_arbiter }}"
-  when:
-    - mongodb_arbiter is defined
-    - mongodb_arbiter
-  tags: [mongodb, mongos, mongodb-exporter]
+- block: # Install MongoDB Prometheus Exporter
+  - name: Create Temporary MongoDB Prometheus Exporter Directory
+    file:
+      path: "{{ mongodb_exporter_temp_dir }}"
+      state: directory
+    tags: [mongodb, mongos, mongodb-exporter]
 
-# https://github.com/percona/mongodb_exporter/releases/download/v0.37.0/mongodb_exporter_0.37.0_checksums.txt
-- name: Download MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Checksums from the Github Repo
-  get_url:
-    url: "{{ mongodb_exporter_checksum_link if mongodb_exporter_version is version('0.20.0', '>=') else mongodb_exporter_checksum_link|replace('_' + mongodb_exporter_version + '_', '-' + mongodb_exporter_version + '-' ) }}"
-    dest: "{{ mongodb_exporter_checksum_path }}"
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Set MongoDB Prometheus Exporter Version '{{ mongodb_exporter_version_arbiter }}' for Arbiter
+    set_fact:
+      mongodb_exporter_version: "{{ mongodb_exporter_version_arbiter }}"
+    when:
+      - mongodb_arbiter is defined
+      - mongodb_arbiter
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Set Stat for MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Streaming Binary Checksums
-  stat:
-    path: "{{ mongodb_exporter_checksum_path }}"
-  register: mongodb_exporter_binary_checksums_fact
-  tags: [mongodb, mongos, mongodb-exporter]
+  # https://github.com/percona/mongodb_exporter/releases/download/v0.37.0/mongodb_exporter_0.37.0_checksums.txt
+  - name: Download MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Checksums from the Github Repo
+    get_url:
+      url: "{{ mongodb_exporter_checksum_link if mongodb_exporter_version is version('0.20.0', '>=') else mongodb_exporter_checksum_link|replace('_' + mongodb_exporter_version + '_', '-' + mongodb_exporter_version + '-' ) }}"
+      dest: "{{ mongodb_exporter_checksum_path }}"
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Register the Checksum Value for MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}'
-  shell: "set -o pipefail && cat {{ mongodb_exporter_checksum_path }} | grep {{ os }}-{{ bin_arch }}.tar.gz | awk '{ print $1 }'"
-  args:
-    executable: "/bin/bash" 
-  register: mongodb_exporter_checksum_value
-  when: mongodb_exporter_binary_checksums_fact.stat.exists
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Set Stat for MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Streaming Binary Checksums
+    stat:
+      path: "{{ mongodb_exporter_checksum_path }}"
+    register: mongodb_exporter_binary_checksums_fact
+    tags: [mongodb, mongos, mongodb-exporter]
 
-# https://github.com/percona/mongodb_exporter/releases/download/v0.37.0/mongodb_exporter-0.37.0.linux-amd64.tar.gz
-- name: Download MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' from the Github Repo
-  get_url:
-    url: "{{ mongodb_exporter_link }}"
-    dest: "{{ mongodb_exporter_temp_dir }}"
-    mode: 0755
-    checksum: sha256:{{ mongodb_exporter_checksum_value.stdout }}
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Register the Checksum Value for MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}'
+    shell: "set -o pipefail && cat {{ mongodb_exporter_checksum_path }} | grep {{ os }}-{{ bin_arch }}.tar.gz | awk '{ print $1 }'"
+    args:
+      executable: "/bin/bash"
+    register: mongodb_exporter_checksum_value
+    when: mongodb_exporter_binary_checksums_fact.stat.exists
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Extract MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Streaming Binary
-  unarchive:
-    src: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"
-    dest: "{{ mongodb_exporter_temp_dir }}"
-    remote_src: yes
-    mode: 0755
-    list_files: true
-    extra_opts: "{{ '--strip-components=1' if mongodb_exporter_version is version('0.20.0', '>=') else omit }}"
-  tags: [mongodb, mongos, mongodb-exporter]
+  # https://github.com/percona/mongodb_exporter/releases/download/v0.37.0/mongodb_exporter-0.37.0.linux-amd64.tar.gz
+  - name: Download MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' from the Github Repo
+    get_url:
+      url: "{{ mongodb_exporter_link }}"
+      dest: "{{ mongodb_exporter_temp_dir }}"
+      mode: 0755
+      checksum: sha256:{{ mongodb_exporter_checksum_value.stdout }}
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Register a Downloaded File Status
-  stat:
-    path: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter"
-  register: download_result_exporter
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Extract MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Streaming Binary
+    unarchive:
+      src: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter-{{ mongodb_exporter_version }}.{{ os }}-{{ bin_arch }}.tar.gz"
+      dest: "{{ mongodb_exporter_temp_dir }}"
+      remote_src: yes
+      mode: 0755
+      list_files: true
+      extra_opts: "{{ '--strip-components=1' if mongodb_exporter_version is version('0.20.0', '>=') else omit }}"
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Ensure the Downloaded MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' File Exist
-  assert:
-    that:
-      - download_result_exporter.stat.exists
-    fail_msg: 'MongoDB Prometheus Exporter {{ mongodb_exporter_version }} has not been downloaded!'
-    quiet: true
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Register a Downloaded File Status
+    stat:
+      path: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter"
+    register: download_result_exporter
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Copy MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Binary to /usr/local/bin
-  become: true
-  copy:
-    src: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter"
-    dest: "{{ mongodb_exporter_path }}"
-    mode: '0755'
-    owner: "{{ mongodb_exporter_user }}"
-    group: "{{ mongodb_exporter_group }}"
-    remote_src: yes
-  notify:
-    - Restart MongoDB-Exporter
-  when: download_result_exporter.stat.exists
-  tags: [mongodb, mongos, mongodb-exporter]
+  - name: Ensure the Downloaded MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' File Exist
+    assert:
+      that:
+        - download_result_exporter.stat.exists
+      fail_msg: 'MongoDB Prometheus Exporter {{ mongodb_exporter_version }} has not been downloaded!'
+      quiet: true
+    tags: [mongodb, mongos, mongodb-exporter]
 
-- name: Delete Downloaded Files
-  become: true
-  file:
-    path: "{{ mongodb_exporter_temp_dir }}"
-    state: absent
+  - name: Copy MongoDB Prometheus Exporter '{{ mongodb_exporter_version }}' Binary to /usr/local/bin
+    copy:
+      src: "{{ mongodb_exporter_temp_dir }}/mongodb_exporter"
+      dest: "{{ mongodb_exporter_path }}"
+      mode: '0755'
+      owner: "{{ mongodb_exporter_user }}"
+      group: "{{ mongodb_exporter_group }}"
+      remote_src: yes
+    notify:
+      - Restart MongoDB-Exporter
+    when: download_result_exporter.stat.exists
+    tags: [mongodb, mongos, mongodb-exporter]
+
+  - name: Delete Downloaded Files
+    file:
+      path: "{{ mongodb_exporter_temp_dir }}"
+      state: absent
+    tags: [mongodb, mongos, mongodb-exporter]
+
+  when: 
+    - ((mongodb_arbiter is defined and mongodb_arbiter)|ternary(mongodb_exporter_version_arbiter, mongodb_exporter_version) not in mongodb_exporter_exists_version.stdout_lines|string|default()) or mongodb_exporter_force_install
   tags: [mongodb, mongos, mongodb-exporter]
 
 - name: Create MongoDB Prometheus Exporter Service File
-  become: true
   template:
     src: mongodb-exporter.service.j2
     dest: /etc/systemd/system/mongodb-exporter.service

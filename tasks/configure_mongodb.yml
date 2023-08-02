@@ -33,7 +33,9 @@
   tags: [mongodb, mongodb-configure]
 
 - name: Check That Logfile Exists
-  stat: path={{ mongodb_systemlog_path }}
+  stat:
+    path: "{{ mongodb_systemlog_path }}"
+    get_checksum: false
   register: logfile_stat
   when: mongodb_systemlog_destination == "file"
   tags: [mongodb, mongodb-configure]
@@ -45,9 +47,10 @@
     owner: "{{ mongodb_user }}"
     group: "{{ mongodb_group }}"
     mode: 0644
-  when: ( mongodb_systemlog_destination == "file"
-        and logfile_stat is defined
-        and not logfile_stat.stat.exists )
+  when:
+    - mongodb_systemlog_destination == "file"
+    - logfile_stat is defined
+    - not logfile_stat.stat.exists
   tags: [mongodb, mongodb-configure]
 
 - name: Ensure Dbpath Directory Exists

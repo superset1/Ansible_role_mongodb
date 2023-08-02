@@ -100,7 +100,6 @@
     tags: [mongodb-dbdelete]
 
   - name: Delete MongoDB Config and Binary Files
-    become: true
     file:
       path: "{{ files_and_dir_to_delete_item.path }}"
       state: absent
@@ -201,7 +200,6 @@
     tags: [mongos-uninstall]
 
   - name: Delete Mongos Config and Binary Files
-    become: true
     file:
       path: "{{ files_and_dir_to_delete_item.path }}"
       state: absent
