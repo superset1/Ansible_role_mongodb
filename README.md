@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.6.0
+Version v1.6.1
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v160)
+  - [What's new](#whats-new-in-v161)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -44,13 +44,8 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.6.0
-- Added ability to create custom roles using the `mongodb_custom_roles` dictionary
-- Changed login host to `127.0.0.1` in some tasks
-- Made skipping several tasks by conditions for faster play
-- Renamed some tasks
-- Updated examples
-- Updated README
+### What's new in v1.6.1
+- Fixed resizing oplog: skip arbiter
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0

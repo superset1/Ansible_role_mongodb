@@ -104,6 +104,7 @@
     when:
       - not (hostvars|dict2items|selectattr('value.mongodb_root_admin_exist.failed', 'defined')|map(attribute='value.mongodb_root_admin_exist.failed'))[0]
       - mongodb_main_group != mongos_host_group
+      - mongodb_arbiter is undefined or not mongodb_arbiter
     tags: [never, mongodb-commands]
 
   - name: Include Mongos Configuration Tasks
