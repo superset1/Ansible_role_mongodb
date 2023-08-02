@@ -41,13 +41,13 @@
   tags: [mongodb, mongodb-create-admin-users]
 
 - name: Ensure that Root User '{{ mongodb_root_admin_name }}' Was Created in the Replicaset
-  community.mongodb.mongodb_info:
-    connection_options: "replicaSet={{ mongodb_replication_replset }}"
+  mongodb_status_edited: # Module allows validate: ['primary', 'reconfigure']
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
     login_host: "{{ inventory_hostname }}"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
+    replica_set: "{{ mongodb_replication_replset }}"
     tls: "{{ ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['mode'] is regex('requireSSL|preferSSL')) or
               (mongodb_net_tls_enabled and mongodb_net_tls_config['mode'] is regex('requireTLS|preferTLS'))) }}"
     tlsCertificateKeyFile:
@@ -66,6 +66,7 @@
           "{{ 'CERT_NONE' if ((not mongodb_net_ssl_enabled) and (not mongodb_net_tls_enabled)) else
               'CERT_OPTIONAL' if ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates']) or (mongodb_net_tls_enabled and mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'])) else
               'CERT_REQUIRED' }}"
+    validate: "primary"
   register: mongodb_root_admin_exist_replicaset
   when:
     - mongodb_replication_enabled

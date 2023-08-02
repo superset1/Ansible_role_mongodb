@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.4
+Version v1.5.5
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v154)
+  - [What's new](#whats-new-in-v155)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -44,14 +44,9 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.4
-- Added checking that normal user's dictionary is correctly filled
-- Added `validate: ['primary', 'reconfigure']` to `mongodb_status_edited` module
-- Added lookup primary task for replicaset
-- Added variables:
-  - `mongodb_net_bind_ip_all`
-  - `mongodb_storage_journal_commitIntervalMs`
-  - `mongodb_storage_wiredtiger_cache_size`
+### What's new in v1.5.5
+- Added collections to meta
+- Fixed creation admin users
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0

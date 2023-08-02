@@ -42,3 +42,6 @@ galaxy_info:
     - vault
 
 dependencies: []
+
+collections:
+  - community.mongodb

@@ -1,22 +1,30 @@
 ---
 
-- name: Preparing MongoDB for tests
-  hosts: all
-  gather_facts: no
+- name: Check
+  hosts: mongo_cluster
+  gather_facts: false
   tasks:
-    - name: "Add Hostnames to /etc/hosts"
-      raw: |
-        sudo apt update
-        sudo apt install python3
-        sudo bash -c 'cat <<EOF >> /etc/hosts
-        172.17.0.2 host1
-        172.17.0.3 host2
-        172.17.0.4 host3
-        EOF'
+    - name: Ping
+      ping:
 
-    - name: "Check systemctl"
-      shell: systemctl
-    
+
+# - name: Preparing MongoDB for tests
+#   hosts: mongo_cluster
+#   gather_facts: no
+#   tasks:
+#     - name: "Add Hostnames to /etc/hosts"
+#       raw: |
+#         sudo apt update
+#         sudo apt install python3
+#         sudo bash -c 'cat <<EOF >> /etc/hosts
+#         172.17.0.2 host1
+#         172.17.0.3 host2
+#         172.17.0.4 host3
+#         EOF'
+
+#     - name: "Check systemctl"
+#       shell: systemctl
+
     # - name: Install Python3
     #   raw: |
     #     sudo apt update

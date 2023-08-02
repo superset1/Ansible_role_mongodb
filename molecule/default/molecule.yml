@@ -1,120 +1,77 @@
 ---
-
 dependency:
   name: galaxy
 driver:
   name: docker
-# lint: |
-#   set -e
-#   yamllint .
-#   ansible-lint .
-#   flake8 library --ignore=E501,E402
+
 platforms:
-  - name: host1
-    # image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
-    # image: "debian:10"
-    image: "geerlingguy/docker-${MOLECULE_DISTRO:-debian10}-ansible:latest"
-    command: ${MOLECULE_DOCKER_COMMAND:-""}
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+  - &debian
+    image: "debian:bullseye"
+    dockerfile: Dockerfile.j2
+    docker_networks:
+      - name: test_docker_network
+        ipam_config:
+          - subnet: 10.172.0.0/24
+            gateway: 10.172.0.1
+    pre_build_image: false
     privileged: true
-    pre_build_image: true
-    # groups:
-    #   - mongo_cluster
-  - name: host2
-    # image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
-    # image: "debian:10"
-    image: "geerlingguy/docker-${MOLECULE_DISTRO:-debian10}-ansible:latest"
-    command: ${MOLECULE_DOCKER_COMMAND:-""}
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    privileged: true
-    pre_build_image: true
-    # groups:
-    #   - mongo_cluster
-  - name: host3
-    # image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
-    # image: "debian:10"
-    image: "geerlingguy/docker-${MOLECULE_DISTRO:-debian10}-ansible:latest"
-    command: ${MOLECULE_DOCKER_COMMAND:-""}
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    privileged: true
-    pre_build_image: true
-    # groups:
-    #   - mongo_cluster
+    required: true
+    # command: ""
+    capabilities:
+      - SYS_ADMIN
+    cgroup_parent: "docker.slice"
+    security_opts:
+      - seccomp=unconfined
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    exposed_ports:
+      - 27017/tcp
+      - 27018/tcp
+      - 27019/tcp
+      - 27020/tcp
+      - 9216/tcp
+    groups:
+      - mongo_cluster
+    name: mongo01
+    hostname: mongo01
+    networks:
+      - name: test_docker_network
+        ipv4_address: 10.172.0.10
+
+  - <<: *debian
+    name: mongo02
+    hostname: mongo02
+    networks:
+      - name: test_docker_network
+        ipv4_address: 10.172.0.11
+
+  - <<: *debian
+    name: mongo03
+    hostname: mongo03
+    networks:
+      - name: test_docker_network
+        ipv4_address: 10.172.0.12
+
 provisioner:
+  log: true
   name: ansible
   config_options:
     defaults:
-      pipelining: true
-  log: true
-  playbooks:
-    converge: ../../tests/playbook.yml
-  # playbooks:
-  #   converge: ${MOLECULE_PLAYBOOK:-../default/converge.yml}
-  #   prepare:  ${MOLECULE_PLAYBOOK:-../default/prepare.yml}
-  #   verify:  ${MOLECULE_PLAYBOOK:-../default/verify.yml}
-  # env:
-  #   MONGODB_VERSION: ${MONGODB_VERSION:-4.4}
-  #   MONGODB_PACKAGE: ${MONGODB_PACKAGE:-mongodb-org}
-    # AUTH_STATE: ${AUTH_STATE:-disabled}
-    # REPLICASET: ${REPLICASET:-testrs}
-
+      display_skipped_hosts: False
+      timeout: 60
+  connection_options:
+    ansible_ssh_user: root
+    ansible_become: False
   inventory:
     links:
-      hosts: ../../tests/hosts
       group_vars: ../../tests/group_vars/
-    host_vars:
-      host1:
-        ansible_python_interpreter: auto_silent
-        mongodb_master: True
-        ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-      host2:
-        ansible_python_interpreter: auto_silent
-        ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-      host3:
-        ansible_python_interpreter: auto_silent
-        mongodb_arbiter: True
-        ansible_host: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
-        
+      #host_vars: ../../inventory/host_vars/
+      hosts: ../../tests/hosts-cluster
+  #converge: ../../tests/test.yml
+  playbooks:
+    prepare: prepare.yml
+
 verifier:
   name: ansible
-
-scenario:
-  create_sequence:
-    - dependency
-    - create
-    - prepare
-  check_sequence:
-    - dependency
-    - cleanup
-    - destroy
-    - create
-    - prepare
-    - converge
-    - check
-    - destroy
-  converge_sequence:
-    - dependency
-    - create
-    - prepare
-    - converge
-  destroy_sequence:
-    - dependency
-    - cleanup
-    - destroy
-  test_sequence:
-    - dependency
-    - lint
-    - cleanup
-    - destroy
-    - syntax
-    - create
-    - prepare
-    - converge
-    # - idempotence
-    - side_effect
-    - verify
-    - cleanup
-    - destroy
