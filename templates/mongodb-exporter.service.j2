@@ -13,7 +13,7 @@ Restart=on-failure
 User={{ mongodb_exporter_user }}
 Group={{ mongodb_exporter_group }}
 {% if mongodb_exporter_version is version('0.33.0', '>=') %}
-ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} --collect-all{% endif %} --discovering-mode --compatible-mode --mongodb.direct-connect --mongodb.uri="mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@localhost:{{ mongodb_net_port }}/admin{{
+ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} --collect-all{% endif %} --discovering-mode --compatible-mode --mongodb.direct-connect --mongodb.uri="mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin{{
    ('?tls=true' +
     '&tlsCertificateKeyFile=' + mongodb_net_tls_certificateKeyFile_path +
    (('&tlsCertificateKeyFilePassword=' + mongodb_net_tls_config['certificateKeyFilePassword']) if mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0 else '') +
@@ -22,7 +22,7 @@ ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} -
    (('&allowInvalidCertificates=' + mongodb_net_tls_config['allowInvalidCertificates']) if mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'] else '') +
    (('&allowInvalidHostnames=' + mongodb_net_tls_config['allowInvalidHostnames']) if mongodb_net_tls_config['allowInvalidHostnames'] is defined and mongodb_net_tls_config['allowInvalidHostnames'] else '')) if mongodb_net_tls_enabled else '' }}"
 {% elif mongodb_exporter_version == '0.11.2' %}
-ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} --collect.database --collect.collection --collect.indexusage{% endif %} --collect.topmetrics --collect.connpoolstats --mongodb.uri="mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@localhost:{{ mongodb_net_port }}/admin{{
+ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} --collect.database --collect.collection --collect.indexusage{% endif %} --collect.topmetrics --collect.connpoolstats --mongodb.uri="mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin{{
    ('?tls=true' +
     '&tlsCertificateKeyFile=' + mongodb_net_tls_certificateKeyFile_path +
    (('&tlsCertificateKeyFilePassword=' + mongodb_net_tls_config['certificateKeyFilePassword']) if mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0 else '') +
@@ -31,7 +31,7 @@ ExecStart=/usr/local/bin/mongodb-exporter{% if mongodb_arbiter is undefined %} -
    (('&allowInvalidCertificates=' + mongodb_net_tls_config['allowInvalidCertificates']) if mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'] else '') +
    (('&allowInvalidHostnames=' + mongodb_net_tls_config['allowInvalidHostnames']) if mongodb_net_tls_config['allowInvalidHostnames'] is defined and mongodb_net_tls_config['allowInvalidHostnames'] else '')) if mongodb_net_tls_enabled else '' }}"
 {% else %}
-ExecStart=/usr/local/bin/mongodb-exporter --mongodb.uri="mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@localhost:{{ mongodb_net_port }}/admin{{
+ExecStart=/usr/local/bin/mongodb-exporter --mongodb.uri="mongodb://{{ mongodb_exporter_name }}:{{ mongodb_exporter_password }}@127.0.0.1:{{ mongodb_net_port }}/admin{{
    ('?tls=true' +
     '&tlsCertificateKeyFile=' + mongodb_net_tls_certificateKeyFile_path +
    (('&tlsCertificateKeyFilePassword=' + mongodb_net_tls_config['certificateKeyFilePassword']) if mongodb_net_tls_config['certificateKeyFilePassword'] is defined and mongodb_net_tls_config['certificateKeyFilePassword']|length > 0 else '') +

@@ -56,11 +56,19 @@
     with_first_found:
       - "install.{{ ansible_distribution | lower }}.yml"
       - "install.{{ ansible_os_family | lower }}.yml"
+    when:
+      - mongodb_reconfigure or mongodb_replication_reconfigure or
+        true in hostvars | json_query('*.mongodb_root_admin_exist.failed') or
+        '(not reachable/healthy)' in hostvars | json_query('*.mongodb_root_admin_exist.replicaset.*[]')
     tags: [mongodb, mongos, mongodb-install, mongos-install]
 
   - name: Include MongoDB Configuration Tasks
     include_tasks: configure_mongodb.yml
-    when: mongodb_main_group != mongos_host_group
+    when:
+      - mongodb_main_group != mongos_host_group
+      - mongodb_reconfigure or mongodb_replication_reconfigure or
+        true in hostvars | json_query('*.mongodb_root_admin_exist.failed') or
+        '(not reachable/healthy)' in hostvars | json_query('*.mongodb_root_admin_exist.replicaset.*[]')
     tags: [mongodb, mongodb-configure, mongodb-logrotate, mongodb-force-restart]
 
   - name: Set Arbiter Index if 'mongodb_arbiter' is Defined
@@ -72,9 +80,10 @@
       - mongodb_replication_enabled
       - hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', item)|selectattr('1.mongodb_arbiter', 'defined')
       - mongodb_main_group != mongos_host_group
+      - mongodb_replication_reconfigure or mongodb_root_admin_exist_replicaset.failed
     tags: [mongodb, mongodb-replicaset, mongos-sharding]
 
-  - name: Include Replication Tasks for Master
+  - name: Include Replication Tasks for Master if Root User '{{ mongodb_root_admin_name }}' Does Not Exist or 'mongodb_replication_reconfigure' is True
     include_tasks: configure_replicaset.yml
     when:
       - mongodb_replication_enabled

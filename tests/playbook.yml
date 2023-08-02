@@ -1,5 +1,5 @@
 ---
-# Role: MongoDB v1.5.7
+# Role: MongoDB v1.6.0
 
 - name: MongoDB Role
   hosts: ~mongo

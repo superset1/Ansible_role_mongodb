@@ -34,3 +34,12 @@ mongodb_net_tls_CAFile_path: /etc/ssl/mongodb-ca.pem
 mongodb_net_tls_CRLFile_path: /etc/ssl/mongodb-crl.pem
 mongodb_net_tls_clusterFile_path: /etc/ssl/mongodb-cluster.pem
 mongodb_net_tls_clusterCAFile_path: /etc/ssl/mongodb-cluster-ca.pem
+
+mongodb_custom_backup_role: # When `mongodb_major_version` is version('6.0', '>=')
+  - name: backupCustom
+    state: present
+    roles: [{ role: backup, db: "{{ mongodb_login_database }}" }]
+    database: "{{ mongodb_login_database }}"
+    privileges:
+      - resource: { db: config, collection: system.preimages }
+        actions: [ find ]

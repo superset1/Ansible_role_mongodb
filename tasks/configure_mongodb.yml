@@ -53,21 +53,6 @@
     - not logfile_stat.stat.exists
   tags: [mongodb, mongodb-configure]
 
-- name: Ensure Dbpath Directory Exists
-  file:
-    path: "{{ mongodb_storage_dbpath }}"
-    state: directory
-    owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_group }}"
-    setype: 'mongod_var_lib_t'
-    recurse: true
-    follow: true
-  notify:
-    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
-    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
-    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
-  tags: [mongodb, mongodb-configure]
-
 - name: Create MongoDB KeyFile
   copy:
     dest: "{{ mongodb_security_keyfile_path }}"
@@ -178,6 +163,21 @@
     owner: "{{ mongodb_user }}"
     group: "{{ mongodb_group }}"
     mode: 0644
+  notify:
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"
+    - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Wait When MongoDB is Started' }}"
+  tags: [mongodb, mongodb-configure]
+
+- name: Ensure Dbpath Directory Exists
+  file:
+    path: "{{ mongodb_storage_dbpath }}"
+    state: directory
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_group }}"
+    setype: 'mongod_var_lib_t'
+    recurse: true
+    follow: true
   notify:
     - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Systemd Service' }}"
     - "{{ 'Include Restart MongoDB Tasks' if _mongodb_force_restart is defined and _mongodb_force_restart else 'Start MongoDB Init Service' }}"

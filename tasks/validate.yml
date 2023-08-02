@@ -205,9 +205,9 @@
     - mongodb_master
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-commands, mongos-sharding, mongodb-exporter]
+  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongos-sharding, mongodb-exporter]
 
-- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Standalone Database
+- name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Standalone
   community.mongodb.mongodb_info:
     login_user: "{{ mongodb_root_admin_name }}"
     login_password: "{{ mongodb_root_admin_password }}"
@@ -238,14 +238,14 @@
     - not mongodb_replication_enabled
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-create-admin-users, mongodb-commands, mongodb-exporter]
+  tags: [mongodb, mongodb-configure, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongodb-exporter]
 
-- name: Set Results of Root User Existence Check
+- name: Set Results of Root User '{{ mongodb_root_admin_name }}' Existence Check
   set_fact: 
     mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_standalone | default({}))  }}"
   when: 
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users, mongodb-commands, mongodb-exporter, mongos-sharding]
+  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongodb-exporter, mongos-sharding]
 
 - name: Check that Normal User's Dictionary is Correctly Filled
   assert:
@@ -255,9 +255,11 @@
       - "{% if not (item.state is defined and item.state == 'absent') %}item.roles is defined and item.roles|length > 0{% endif %}"
     quiet: true
     fail_msg: "Fill in the user's dictionary correctly!"
+  register: _mongodb_users_check
   with_items:
     - "{{ mongodb_users }}"
   when:
+    - (mongodb_replication_enabled and mongodb_master is defined and mongodb_master) or not mongodb_replication_enabled
     - mongodb_users is defined
     - mongodb_users | length > 0
     - mongodb_main_group != mongos_host_group

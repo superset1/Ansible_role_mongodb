@@ -1,6 +1,6 @@
 ---
 
-- name: Lookup PRIMARY Replicaset Member if Root User Exists and 'mongodb_replication_reconfigure' is True
+- name: Lookup PRIMARY Replicaset Member if Root User '{{ mongodb_root_admin_name }}' Exists and 'mongodb_replication_reconfigure' is True
   set_fact:
     mongodb_primary_host: "{{ item.key.split(':')[0] }}"
   with_items: 
@@ -15,9 +15,9 @@
   delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
   any_errors_fatal: true
   community.mongodb.mongodb_replicaset:
-    login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
-    login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
-    login_host: "localhost"
+    login_user: "{{ (not mongodb_root_admin_exist_replicaset.failed) | ternary(mongodb_root_admin_name, omit) }}"
+    login_password: "{{ (not mongodb_root_admin_exist_replicaset.failed) | ternary(mongodb_root_admin_password, omit) }}"
+    login_host: "127.0.0.1"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ item.replicaset_name }}"
@@ -39,22 +39,25 @@
           "{{ 'CERT_NONE' if ((not mongodb_net_ssl_enabled) and (not mongodb_net_tls_enabled)) else
               'CERT_OPTIONAL' if ((mongodb_net_ssl_enabled and mongodb_net_ssl_config['allowInvalidCertificates'] is defined and mongodb_net_ssl_config['allowInvalidCertificates']) or (mongodb_net_tls_enabled and mongodb_net_tls_config['allowInvalidCertificates'] is defined and mongodb_net_tls_config['allowInvalidCertificates'])) else
               'CERT_REQUIRED' }}"
-    reconfigure: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary(mongodb_replication_reconfigure, false) }}"
+    reconfigure: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist_replicaset.failed) | ternary(mongodb_replication_reconfigure, false) }}"
     force: true
     members: "{{ groups[item.group_name] | join(':' + mongodb_net_port | string + ',') + ':' + mongodb_net_port | string }}"
     arbiter_at_index: "{{ groups[item.group_name].index(mongodb_arbiter_index) if mongodb_arbiter_index is defined else omit }}"
   with_items:
     - replicaset_name: "{{ mongodb_replication_replset }}"
       group_name: "{{ mongodb_main_group }}"
+  when:
+    - mongodb_replication_reconfigure or mongodb_root_admin_exist_replicaset.failed or
+      '(not reachable/healthy)' in hostvars | json_query('*.mongodb_root_admin_exist_replicaset.replicaset.*[]')
   tags: [mongodb, mongodb-replicaset]
 
 - name: Waiting for the Replicaset to Stabilise
   delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
   any_errors_fatal: true
   mongodb_status_edited: # Module allows validate: ['primary', 'reconfigure']
-    login_user: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_name, omit) }}"
-    login_password: "{{ (not mongodb_root_admin_exist.failed) | ternary(mongodb_root_admin_password, omit) }}"
-    login_host: "localhost"
+    login_user: "{{ (not mongodb_root_admin_exist_replicaset.failed) | ternary(mongodb_root_admin_name, omit) }}"
+    login_password: "{{ (not mongodb_root_admin_exist_replicaset.failed) | ternary(mongodb_root_admin_password, omit) }}"
+    login_host: "127.0.0.1"
     login_port: "{{ mongodb_net_port }}"
     login_database: "{{ mongodb_login_database }}"
     replica_set: "{{ mongodb_replication_replset }}"
@@ -78,14 +81,17 @@
               'CERT_REQUIRED' }}"
     poll: 10
     interval: 10
-    validate: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist.failed) | ternary('reconfigure', omit) }}"
+    validate: "{{ (mongodb_replication_reconfigure and not mongodb_root_admin_exist_replicaset.failed) | ternary('reconfigure', omit) }}"
   register: mongodb_replicaset_status
-  tags: [mongodb, mongodb-replicaset]
+  when:
+    - mongodb_replication_reconfigure or mongodb_root_admin_exist_replicaset.failed or
+      '(not reachable/healthy)' in hostvars | json_query('*.mongodb_root_admin_exist_replicaset.replicaset.*[]')
+  tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]
 
 - name: Lookup PRIMARY Replicaset Member
   set_fact:
     mongodb_primary_host: "{{ item.key.split(':')[0] }}"
   with_items: 
-    - "{{ lookup('dict', mongodb_replicaset_status.replicaset|default(mongodb_root_admin_exist_replicaset.replicaset)) }}"
+    - "{{ lookup('dict', mongodb_replicaset_status.replicaset) if (mongodb_replication_reconfigure or mongodb_root_admin_exist_replicaset.failed) else lookup('dict', mongodb_root_admin_exist_replicaset.replicaset) }}"
   when: "'PRIMARY' in item.value"
   tags: [mongodb, mongodb-replicaset, mongodb-create-admin-users]

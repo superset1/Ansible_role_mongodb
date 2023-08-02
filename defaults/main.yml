@@ -4,13 +4,14 @@
 mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
 mongodb_package: "mongodb-org"
 mongodb_package_state: "present"
+mongodb_reconfigure: false                       # Reconfigure MongoDB
 mongodb_version: "4.4"                           # Default MongoDB version
 
 mongodb_pymongo_from_pip: true                   # Install latest PyMongo via PIP or package manager
 mongodb_pymongo_pip_version: 4.2.0               # Choose PyMong version to install from pip. If not set use latest
 
 mongodb_admin_update_password: false             # Update admin passwords every play if true
-mongodb_user_update_password: false              # Update normal user passwords every play if true
+mongodb_users_update_password: false             # Update normal user passwords every play if true
 mongodb_manage_service: true
 
 mongodb_systemd_unit_limit_nofile: 64000
@@ -217,6 +218,20 @@ mongodb_oplog_users: {} # Optional: If you want to add multiple oplog users
   #   password: ""
   #   state: "" # Optional: present|absent (Default: present)
   #   update_password: false # Optional: true|false (Default: false)
+
+mongodb_custom_roles: {} # Optional: If you want to create custom user roles
+  # - name: ""
+  #   state: "" # Optional: present|absent (Default: present)
+  #   roles: # Optional
+  #     - role: ""
+  #       db: ""
+  #   database: ""
+  #   privileges: # Optional
+  #     - resource:
+  #         db: ""
+  #         collection: ""
+  #       actions:
+  #         - ""
 
 # Custom config options
 mongodb_config: {}

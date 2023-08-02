@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.5.7
+Version v1.6.0
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v157)
+  - [What's new](#whats-new-in-v160)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -25,7 +25,7 @@ Version v1.5.7
     - [Example var file for sharded cluster](#example-var-file-for-sharded-cluster)
   - [Other examples](#other-examples)
     - [Adding and deleting members in the replicaset](#adding-and-deleting-members-in-the-replicaset)
-    - [Adding normal users to the worked production database](#adding-normal-users-to-the-worked-production-database)
+    - [Adding normal users to the worked production database with custom role](#adding-normal-users-to-the-worked-production-database-with-custom-role)
     - [Deleting normal users from the worked production database](#deleting-normal-users-from-the-worked-production-database)
     - [Updating passwords for admins and normal users](#updating-passwords-for-admins-and-normal-users)
   - [License](#license)
@@ -44,13 +44,13 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.5.7
-- Added ability to run additional commands in MongoDB
-- Added installation requirements tasks
-- Added task `Resize oplog` when `mongodb_replication_oplogresize: true`
-- Added variable `mongodb_replication_oplogresize: false`
-- Complete idempotency
-- Fixed backup role
+### What's new in v1.6.0
+- Added ability to create custom roles using the `mongodb_custom_roles` dictionary
+- Changed login host to `127.0.0.1` in some tasks
+- Made skipping several tasks by conditions for faster play
+- Renamed some tasks
+- Updated examples
+- Updated README
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -145,13 +145,14 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 mongodb_daemon_name: "{{ 'mongod' if ('mongodb-org' in mongodb_package) else 'mongodb' }}"
 mongodb_package: "mongodb-org"
 mongodb_package_state: "present"
+mongodb_reconfigure: false                       # Reconfigure MongoDB
 mongodb_version: "4.4"                           # Default MongoDB version
 
 mongodb_pymongo_from_pip: true                   # Install latest PyMongo via PIP or package manager
 mongodb_pymongo_pip_version: 4.2.0               # Choose PyMong version to install from pip. If not set use latest
 
 mongodb_admin_update_password: false             # Update admin passwords every play if true
-mongodb_user_update_password: false              # Update normal user passwords every play if true
+mongodb_users_update_password: false             # Update normal user passwords every play if true
 mongodb_manage_service: true
 
 mongodb_systemd_unit_limit_nofile: 64000
@@ -359,6 +360,20 @@ mongodb_oplog_users: {} # Optional: If you want to add multiple oplog users
   #   state: "" # Optional: present|absent (Default: present)
   #   update_password: false # Optional: true|false (Default: false)
 
+mongodb_custom_roles: {} # Optional: If you want to create custom user roles
+  # - name: ""
+  #   state: "" # Optional: present|absent (Default: present)
+  #   roles: # Optional
+  #     - role: ""
+  #       db: ""
+  #   database: ""
+  #   privileges: # Optional
+  #     - resource:
+  #         db: ""
+  #         collection: ""
+  #       actions:
+  #         - ""
+
 # Custom config options
 mongodb_config: {}
 
@@ -414,8 +429,8 @@ mongodb_exporter_password: "mongodbexporter" # Required if variable mongodb_expo
 mongodb_users: # Optional if you want to add multiple regular users
   - name: admin
     password: "admin_password"
-    roles: readWriteAnyDatabase
-    database: admin
+    roles: dbOwner
+    database: user_database
   - name: user_rw
     password: "user_rw_password"
     roles: readWrite
@@ -458,8 +473,8 @@ mongodb_keyfile_content: "{{ lookup('hashi_vault', 'secret=services/test-namespa
 mongodb_users: # Optional if you want to add multiple regular users
   - name: admin
     password: "admin_password"
-    roles: readWriteAnyDatabase
-    database: admin
+    roles: dbOwner
+    database: user_database
   - name: user_rw
     password: "user_rw_password"
     roles: readWrite
@@ -555,7 +570,7 @@ mongodb_oplog_users: # Optional if you want to add oplog user
 
 ## Other examples
 
-### Adding and deleting members in the replicaset 
+### Adding and deleting members in the replicaset
 
 To add or delete members in the replicaset:
 
@@ -563,15 +578,15 @@ To add or delete members in the replicaset:
 2) Make sure the number of members is odd
 3) Run playbook with extra-var `-e mongodb_replication_reconfigure=true`
 
-### Adding normal users to the worked production database
+### Adding normal users to the worked production database with custom role
 
-To add users, simply add a new user (e.g. `new_user`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
+To add users, simply add a new user (e.g. `new_user_with_custom_role`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
 ```yaml
 mongodb_users: # Optional if you want to add multiple regular users
   - name: admin
     password: "admin_password"
-    roles: readWriteAnyDatabase
-    database: admin
+    roles: dbOwner
+    database: user_database
   - name: user_rw
     password: "user_rw_password"
     roles: readWrite
@@ -580,21 +595,35 @@ mongodb_users: # Optional if you want to add multiple regular users
     password: "user_ro_password"
     roles: read
     database: user_database
-  - name: new_user
-    password: "new_user_password"
-    roles: readWrite
-    database: new_user_database
+  - name: new_user_with_custom_role
+    password: "new_user_with_custom_role_password"
+    roles: read-and-create-index
+    database: user_database
+
+mongodb_custom_roles:
+  - name: read-and-create-index
+    state: present
+    roles:
+      - role: read
+        db: user_database
+    database: user_database
+    privileges:
+      - resource:
+          db: user_database
+          collection: ""
+        actions:
+          - createIndex
 ```
 
 ### Deleting normal users from the worked production database
 
-To delete users, add key `state: absent` for a specific user (e.g. `new_user`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
+To delete users, add key `state: absent` for a specific user (e.g. `user_to_delete`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
 ```yaml
 mongodb_users: # Optional if you want to add multiple regular users
   - name: admin
     password: "admin_password"
-    roles: readWriteAnyDatabase
-    database: admin
+    roles: dbOwner
+    database: user_database
   - name: user_rw
     password: "user_rw_password"
     roles: readWrite
@@ -603,8 +632,8 @@ mongodb_users: # Optional if you want to add multiple regular users
     password: "user_ro_password"
     roles: read
     database: user_database
-  - name: new_user
-    database: new_user_database
+  - name: user_to_delete
+    database: user_database
     state: absent # Optional: present|absent (Default: present)
 
 mongodb_oplog_users: # Optional if you want to add oplog user
@@ -616,15 +645,15 @@ mongodb_oplog_users: # Optional if you want to add oplog user
 
 To update passwords for all admin users, set global variable `mongodb_admin_update_password: true`
 
-To update passwords for all normal users, set global variable `mongodb_user_update_password: true`
+To update passwords for all normal users, set global variable `mongodb_users_update_password: true`
 
 To selectively update normal user passwords, add key `update_password: true` for a specific user (e.g. `user_ro`) to your var file and run the playbook with the `mongodb-add-users` tag. It's safe even in production.
 ```yaml
 mongodb_users: # Optional if you want to add multiple regular users
   - name: admin
     password: "admin_password"
-    roles: readWriteAnyDatabase
-    database: admin
+    roles: dbOwner
+    database: user_database
   - name: user_rw
     password: "user_rw_password"
     roles: readWrite
