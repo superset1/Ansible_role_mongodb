@@ -125,6 +125,7 @@ mongodb_operation_profiling_slow_op_threshold_ms: 100
 mongodb_operation_profiling_mode: "off"
 
 ## Cloud options (MongoDB >= 4.0)
+mongodb_cloud_enabled: false # Because deprecated https://www.mongodb.com/docs/v6.0/administration/free-monitoring/#free-monitoring
 mongodb_cloud_monitoring_free_state: "runtime"
 
 ## MongoDB Standalone options

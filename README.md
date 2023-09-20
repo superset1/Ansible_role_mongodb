@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.6.4
+Version v1.6.5
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v164)
+  - [What's new](#whats-new-in-v165)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -28,6 +28,7 @@ Version v1.6.4
     - [Adding normal users to the worked production database with custom role](#adding-normal-users-to-the-worked-production-database-with-custom-role)
     - [Deleting normal users from the worked production database](#deleting-normal-users-from-the-worked-production-database)
     - [Updating passwords for admins and normal users](#updating-passwords-for-admins-and-normal-users)
+    - [Reset lost admin and user passwords](#reset-lost-admin-and-user-passwords)
   - [License](#license)
 
 ## General info
@@ -44,11 +45,9 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.6.4
-- Added variable `mongos_reconfigure: false`
-- Fixed force installation Mongos
-- Optimized role speed
-
+### What's new in v1.6.5
+- Added example to README "Reset lost admin and user passwords"
+- Added variable `mongodb_cloud_enabled: false` because free cloud monitoring is deprecated https://www.mongodb.com/docs/v6.0/administration/free-monitoring/#free-monitoring
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
 - Supports creation users on worked base without crash
@@ -263,6 +262,7 @@ mongodb_operation_profiling_slow_op_threshold_ms: 100
 mongodb_operation_profiling_mode: "off"
 
 ## Cloud options (MongoDB >= 4.0)
+mongodb_cloud_enabled: false # Because deprecated https://www.mongodb.com/docs/v6.0/administration/free-monitoring/#free-monitoring
 mongodb_cloud_monitoring_free_state: "runtime"
 
 ## MongoDB Standalone options
@@ -668,6 +668,13 @@ mongodb_oplog_users: # Optional if you want to add oplog user
   - name: oplog
     password: "oplog_new_password"
     update_password: true # Optional: true|false (Default: false)
+```
+
+### Reset lost admin and user passwords
+
+To reset lost admin and user passwords run the playbook like this:
+```
+ansible-playbook playbook.yml -i hosts -t "mongodb,mongodb-force-restart" -e '{mongodb_reconfigure: true, mongodb_security_authorization_enabled: false, mongodb_admin_update_password: true, mongodb_users_update_password: true, mongodb_exporter_force_install: true}'; ansible-playbook playbook.yml -i hosts -t "mongodb,mongodb-force-restart" -e '{mongodb_reconfigure: true}'
 ```
 
 **See worked example in tests/ directory**

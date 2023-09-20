@@ -203,7 +203,7 @@ operationProfiling:
   {% endfor %}
   {% endif %}
 
-{% if mongodb_major_version %}
+{% if mongodb_major_version and mongodb_cloud_enabled %}
 cloud:
   monitoring:
     free:
