@@ -1,12 +1,12 @@
 Ansible role for MongoDB 
 ===========
 
-Version v1.6.3
+Version v1.6.4
 
 ## Content
 ------------
 - [General info](#general-info)
-  - [What's new](#whats-new-in-v163)
+  - [What's new](#whats-new-in-v164)
   - [Feature](#feature)
   - [Requirements](#requirements)
   - [Tags](#tags)
@@ -44,12 +44,10 @@ Ansible role which manages [MongoDB](http://www.mongodb.org/)
 - Setup MMS automation agent
 - Setup mongodb-exporter prometheus metrics
 
-### What's new in v1.6.3
-- Added forced installation MongoDB and Mongos
-- Fixed apt and gpg keys
-- Fixed installation of a specific version of MongoDB and Mongos
-- Fixed `mongodb-install` tag
-- Skipped installation mongosh when MongoDB version <= 4.4
+### What's new in v1.6.4
+- Added variable `mongos_reconfigure: false`
+- Fixed force installation Mongos
+- Optimized role speed
 
 ### Feature
 - Supported versions MongoDB: 3.4, 3.6, 4.0, 4.2, 4.4, 5.0, 6.0
@@ -294,6 +292,7 @@ mongos_daemon_name: "mongos"
 mongos_force_install: false                                           # Forced installation if there are any problems or you need to do a downgrade
 mongos_package: "mongodb-org-mongos"
 mongos_package_state: "present"
+mongos_reconfigure: false                                             # Reconfigure Mongos
 mongos_version: "{{ mongodb_version }}"
 
 mongos_user: "{{ 'mongos' if ('RedHat' == ansible_os_family) else 'mongodb' }}"

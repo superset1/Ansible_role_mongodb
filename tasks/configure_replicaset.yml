@@ -51,7 +51,7 @@
       '(not reachable/healthy)' in hostvars | json_query('*.mongodb_root_admin_exist_replicaset.replicaset.*[]')
   tags: [mongodb, mongodb-replicaset]
 
-- name: Waiting for the Replicaset to Stabilise
+- name: Waiting for the Replicaset to Stabilize
   delegate_to: "{{ (hostvars|dictsort|selectattr('1.mongodb_main_group', 'defined')|selectattr('1.mongodb_main_group', 'equalto', mongodb_main_group)|selectattr('1.mongodb_primary_host', 'defined')|map(attribute='1.mongodb_primary_host'))[0] | default(inventory_hostname) }}"
   any_errors_fatal: true
   mongodb_status_edited: # Module allows validate: ['primary', 'reconfigure']

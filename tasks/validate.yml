@@ -143,7 +143,7 @@
     - mongodb_replication_enabled
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-configure, mongos-sharding]
+  tags: [mongodb, mongos, mongodb-configure, mongos-sharding]
 
 - name: Check Value of Variable mongodb_keyfile_content if mongodb_replication_enabled is True
   assert:
@@ -154,7 +154,7 @@
   when: 
     - mongodb_replication_enabled or mongodb_main_group == mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongos, mongodb-configure, mongos-configure, mongos-sharding]
+  tags: [mongodb, mongos, mongodb-configure, mongos-configure]
 
 - name: Check that Admins Passwords are Not Empty
   assert:
@@ -166,7 +166,7 @@
     quiet: true
   when: 
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongos-sharding, mongodb-exporter]
+  tags: [mongodb, mongos, mongodb-configure, mongodb-replicaset, mongos-sharding, mongodb-create-admin-users, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Replicaset
   mongodb_status_edited: # Module allows validate: ['primary', 'reconfigure']
@@ -205,7 +205,7 @@
     - mongodb_master
     - mongodb_main_group != mongos_host_group
     - mongodb_main_group != 'ungrouped'
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongos-sharding, mongodb-exporter]
+  tags: [mongodb, mongos, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongos-sharding, mongodb-exporter]
 
 - name: Check that Root User '{{ mongodb_root_admin_name }}' Already Exists in the Standalone
   community.mongodb.mongodb_info:
@@ -245,7 +245,7 @@
     mongodb_root_admin_exist: "{{ mongodb_root_admin_exist_replicaset | default({}) | combine(mongodb_root_admin_exist_standalone | default({}))  }}"
   when: 
     - mongodb_main_group != mongos_host_group
-  tags: [mongodb, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongodb-exporter, mongos-sharding]
+  tags: [mongodb, mongos, mongodb-configure, mongodb-replicaset, mongodb-create-admin-users, mongodb-add-users, mongodb-commands, mongos-sharding, mongodb-exporter]
 
 - name: Check that Normal User's Dictionary is Correctly Filled
   assert:

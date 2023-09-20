@@ -154,6 +154,7 @@ mongos_daemon_name: "mongos"
 mongos_force_install: false                                           # Forced installation if there are any problems or you need to do a downgrade
 mongos_package: "mongodb-org-mongos"
 mongos_package_state: "present"
+mongos_reconfigure: false                                             # Reconfigure Mongos
 mongos_version: "{{ mongodb_version }}"
 
 mongos_user: "{{ 'mongos' if ('RedHat' == ansible_os_family) else 'mongodb' }}"

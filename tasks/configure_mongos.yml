@@ -1,67 +1,74 @@
 ---
+
+- name: Check that Mongos Systemd Service Exists
+  systemd:
+    name: "{{ mongos_daemon_name }}"
+  register: _mongos_systemd_state
+  tags: [mongos, mongos-configure]
+
 - name: Enable Force Restart Mongos
   changed_when: true
   set_fact:
     _mongos_force_restart: true
   notify:
     - Include Restart Mongos Tasks
-  when:
-    - mongodb_main_group == mongos_host_group
   tags: [never, mongos-force-restart]
 
-- name: Create Mongos Linux Group '{{ mongos_group }}'
-  group:
-    name: "{{ mongos_group }}"
-    state: present
-  tags: [mongos, mongos-configure]
+- block:
+  - name: Create Mongos Linux Group '{{ mongos_group }}'
+    group:
+      name: "{{ mongos_group }}"
+      state: present
+    tags: [mongos, mongos-configure]
 
-- name: Create Mongos Linux User '{{ mongos_user }}'
-  user:
-    name: "{{ mongos_user }}"
-    group: "{{ mongos_group }}"
-    state: present
-  tags: [mongos, mongos-configure]
+  - name: Create Mongos Linux User '{{ mongos_user }}'
+    user:
+      name: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      state: present
+    tags: [mongos, mongos-configure]
 
-- name: Create Log Directory if Missing
-  file:
-    state: directory
-    dest: "{{ mongos_systemlog_path|dirname }}"
-    owner: "{{ mongos_user }}"
-    group: "{{ mongos_group }}"
-    mode: 0755
-  when: mongos_systemlog_destination == "file"
-  tags: [mongos, mongos-configure]
+  - name: Create Log Directory if Missing
+    file:
+      state: directory
+      dest: "{{ mongos_systemlog_path|dirname }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0755
+    when: mongos_systemlog_destination == "file"
+    tags: [mongos, mongos-configure]
 
-- name: Check That Logfile Exists
-  stat: path={{ mongos_systemlog_path }}
-  register: logfile_stat
-  when: mongos_systemlog_destination == "file"
-  tags: [mongos, mongos-configure]
+  - name: Check That Logfile Exists
+    stat: path={{ mongos_systemlog_path }}
+    register: logfile_stat
+    when: mongos_systemlog_destination == "file"
+    tags: [mongos, mongos-configure]
 
-- name: Create Logfile if Missing
-  file:
-    state: touch
-    dest: "{{ mongos_systemlog_path }}"
-    owner: "{{ mongos_user }}"
-    group: "{{ mongos_group }}"
-    mode: 0644
-  when: ( mongos_systemlog_destination == "file"
-        and logfile_stat is defined
-        and not logfile_stat.stat.exists )
-  tags: [mongos, mongos-configure]
+  - name: Create Logfile if Missing
+    file:
+      state: touch
+      dest: "{{ mongos_systemlog_path }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0644
+    when: ( mongos_systemlog_destination == "file"
+          and logfile_stat is defined
+          and not logfile_stat.stat.exists )
+    tags: [mongos, mongos-configure]
 
-- name: Create Mongos KeyFile
-  copy:
-    dest: "{{ mongos_security_keyfile_path }}"
-    content: "{{ mongos_keyfile_content }}"
-    owner: "{{ mongos_user }}"
-    group: "{{ mongos_group }}"
-    mode: 0400
-  notify:
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Systemd Service' }}"
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Init Service' }}"
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Wait When Mongos is Started' }}"
-  when: mongodb_main_group == mongos_host_group
+  - name: Create Mongos KeyFile
+    copy:
+      dest: "{{ mongos_security_keyfile_path }}"
+      content: "{{ mongos_keyfile_content }}"
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0400
+    notify:
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Systemd Service' }}"
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Init Service' }}"
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Wait When Mongos is Started' }}"
+
+  when: mongos_reconfigure or _mongos_systemd_state.status.ActiveState != 'active'
   tags: [mongos, mongos-configure]
 
 - block:
@@ -149,57 +156,63 @@
         (mongodb_net_tls_config['clusterFileContent'] is defined and mongodb_net_tls_config['clusterFileContent']|length > 0))
     tags: [mongos, mongos-configure]
     
-  when: mongodb_net_ssl_enabled or mongodb_net_tls_enabled
+  when:
+    - mongodb_net_ssl_enabled or mongodb_net_tls_enabled
+    - mongos_reconfigure or _mongos_systemd_state.status.ActiveState != 'active'
   tags: [mongos, mongos-configure]
 
-- name: Configure Mongos
-  template:
-    src: mongos.conf.j2
-    dest: /etc/mongos.conf
-    backup: true
-    owner: "{{ mongos_user }}"
-    group: "{{ mongos_group }}"
-    mode: 0644
-  notify:
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Systemd Service' }}"
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Init Service' }}"
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Wait When Mongos is Started' }}"
-  tags: [mongos, mongos-configure]
+- block:
+  - name: Configure Mongos
+    template:
+      src: mongos.conf.j2
+      dest: /etc/mongos.conf
+      backup: true
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0644
+    notify:
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Systemd Service' }}"
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Init Service' }}"
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Wait When Mongos is Started' }}"
+    tags: [mongos, mongos-configure]
 
-- name: Configure Mongos Logrotate
-  template:
-    src: mongos.logrotate.j2
-    dest: /etc/logrotate.d/{{ mongos_daemon_name }}
-    owner: "root"
-    group: "root"
-    mode: 0644
-  when: mongos_systemlog_destination == 'file'
-  tags: [mongos, mongos-configure, mongos-logrotate]
+  - name: Configure Mongos Logrotate
+    template:
+      src: mongos.logrotate.j2
+      dest: /etc/logrotate.d/{{ mongos_daemon_name }}
+      owner: "root"
+      group: "root"
+      mode: 0644
+    when: mongos_systemlog_destination == 'file'
+    tags: [mongos, mongos-configure, mongos-logrotate]
 
-- name: Add Mongos Systemd Configuration if Present
-  template:
-    src: mongos.service.j2
-    dest: "/lib/systemd/system/{{ mongos_daemon_name }}.service"
-    owner: root
-    group: root
-    mode: '0644'
-  notify:
-    - Systemd Daemon Reload
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Systemd Service' }}"
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Init Service' }}"
-    - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Wait When Mongos is Started' }}"
-  when: ansible_service_mgr == "systemd"
-  tags: [mongos, mongos-configure]
+  - name: Ensure Mongos Service Pre Start Script Exists
+    template:
+      src: mongos_pre.sh.j2
+      dest: /usr/local/bin/mongos_pre.sh
+      owner: "{{ mongos_user }}"
+      group: "{{ mongos_group }}"
+      mode: 0755
+    tags: [mongos, mongos-configure]
 
-- name: Ensure Mongos Service Pre Start Script Exists
-  template:
-    src: mongos_pre.sh.j2
-    dest: /usr/local/bin/mongos_pre.sh
-    owner: "{{ mongos_user }}"
-    group: "{{ mongos_group }}"
-    mode: 0755
-  tags: [mongos, mongos-configure]
+  - name: Add Mongos Systemd Configuration if Present
+    template:
+      src: mongos.service.j2
+      dest: "/lib/systemd/system/{{ mongos_daemon_name }}.service"
+      owner: root
+      group: root
+      mode: '0644'
+    notify:
+      - Systemd Daemon Reload
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Systemd Service' }}"
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Start Mongos Init Service' }}"
+      - "{{ 'Include Restart Mongos Tasks' if _mongos_force_restart is defined and _mongos_force_restart else 'Wait When Mongos is Started' }}"
+    when: ansible_service_mgr == "systemd"
+    tags: [mongos, mongos-configure]
 
-- name: Flush All Handlers at This Point
-  meta: flush_handlers
+  - name: Flush All Handlers at This Point
+    meta: flush_handlers
+    tags: [mongos, mongos-configure]
+
+  when: mongos_reconfigure or _mongos_systemd_state.status.ActiveState != 'active'
   tags: [mongos, mongos-configure]

@@ -1,14 +1,5 @@
 ---
 
-- name: Create MongoDB Prometheus Exporter Linux User '{{ mongodb_exporter_user }}'
-  user:
-    name: "{{ mongodb_exporter_user }}"
-    comment: "MongoDB Prometheus Exporter User (Ansible Managed)"
-    createhome: "no"
-    shell: "/usr/sbin/nologin"
-    system: "yes"
-  tags: [mongodb, mongos, mongodb-exporter]
-
 - name: Create MongoDB Monitor User '{{ mongodb_exporter_name }}'
   community.mongodb.mongodb_user:
     name: "{{ mongodb_exporter_name }}"
@@ -54,6 +45,15 @@
   tags: [mongodb, mongos, mongodb-exporter]
 
 - block: # Install MongoDB Prometheus Exporter
+  - name: Create MongoDB Prometheus Exporter Linux User '{{ mongodb_exporter_user }}'
+    user:
+      name: "{{ mongodb_exporter_user }}"
+      comment: "MongoDB Prometheus Exporter User (Ansible Managed)"
+      createhome: "no"
+      shell: "/usr/sbin/nologin"
+      system: "yes"
+    tags: [mongodb, mongos, mongodb-exporter]
+
   - name: Create Temporary MongoDB Prometheus Exporter Directory
     file:
       path: "{{ mongodb_exporter_temp_dir }}"
