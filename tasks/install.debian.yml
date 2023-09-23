@@ -70,11 +70,21 @@
     - ansible_distribution_release == "focal"
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
+- name: Fail When Using Wrong mongodb_version Variable with Ubuntu 22.04 (Jammy)
+  fail:
+    msg: "mongodb_version variable should be '6.0' for Ubuntu 22.04 (Jammy)"
+  when:
+    - mongodb_package == 'mongodb-org'
+    - mongos_package == 'mongodb-org-mongos'
+    - mongodb_major_version is not regex("6.0")
+    - ansible_distribution_release == "jammy"
+  tags: [mongodb, mongos, mongodb-install, mongos-install]
+
 - name: Fail When Using Wrong ansible_distribution_release
   fail:
-    msg: "ansible_distribution_release should be 'Debian 8 (Jessie)' or 'Debian 9 (Stretch)' or 'Debian 10 (Buster)' or 'Debian 11 (Bullseye)' or 'Ubuntu 16.04 (Xenial)' or 'Ubuntu 18.04 (Bionic)' or 'Ubuntu 20.04 (Focal)'"
+    msg: "ansible_distribution_release should be 'Debian 8 (Jessie)' or 'Debian 9 (Stretch)' or 'Debian 10 (Buster)' or 'Debian 11 (Bullseye)' or 'Ubuntu 16.04 (Xenial)' or 'Ubuntu 18.04 (Bionic)' or 'Ubuntu 20.04 (Focal)' or 'Ubuntu 22.04 (Jammy)'"
   when:
-    - ansible_distribution_release is not regex("xenial|stretch|buster|bullseye|bionic|focal")
+    - ansible_distribution_release is not regex("xenial|stretch|buster|bullseye|bionic|focal|jammy")
   tags: [mongodb, mongos, mongodb-install, mongos-install]
 
 - name: Disable Transparent Huge Pages on Systemd Systems
